@@ -795,338 +795,366 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 
 
 /* ---------------------------------------------
-   12. Geavanceerd waarderingsmodel — AI Taxatie (HERSCHREVEN)
+   12. Geavanceerd Waarderingsmodel — AI Taxatie (REALISTISCH & COMPLEET)
 --------------------------------------------- */
 
-function calculateValueDetailed({ size, rooms, label, bouwjaar, onderhoud, erfpacht, servicekosten, buitenruimte }) {
-
-const breakdown = [];
-
-let m2 = avgM2;
-breakdown.push({ stap: "Startwaarde", waarde: Math.round(m2), factor: 1 });
-
-/* ------------------------------------------
-   1. ENERGIELABEL
------------------------------------------- */
-const labelFactorMap = {
-  "A+++": 1.06,
-  "A++": 1.05,
-  "A+": 1.04,
-  "A": 1.03,
-  "B": 1.00,
-  "C": 0.97,
-  "D": 0.94,
-  "E": 0.91,
-  "F": 0.88,
-  "?": 0.96
-};
-
-const fLabel = labelFactorMap[label] || 1;
-m2 *= fLabel;
-breakdown.push({
-  stap: `Energielabel (${label})`,
-  factor: fLabel,
-  waarde: Math.round(m2)
-});
-
-/* ------------------------------------------
-   2. KAMERS
------------------------------------------- */
-let fRooms = 1;
-if (rooms >= 4) fRooms = 1.03;
-else if (rooms === 3) fRooms = 1.015;
-else if (rooms <= 2) fRooms = 0.97;
-
-m2 *= fRooms;
-breakdown.push({
-  stap: `Kamercorrectie (${rooms} kamers)`,
-  factor: fRooms,
-  waarde: Math.round(m2)
-});
-
-/* ------------------------------------------
-   3. ONDERHOUDSSTAAT
------------------------------------------- */
-const maintFactorMap = {
-  "slecht": 0.80,
-  "matig": 0.90,
-  "normaal": 1.00,
-  "goed": 1.04,
-  "luxe": 1.08,
-  "zeer_luxe": 1.12
-};
-
-const fMaint = maintFactorMap[onderhoud] || 1;
-m2 *= fMaint;
-breakdown.push({
-  stap: `Onderhoudsstaat (${onderhoud})`,
-  factor: fMaint,
-  waarde: Math.round(m2)
-});
-
-/* ------------------------------------------
-   4. BOUWJAAR
------------------------------------------- */
-let fYear = 1;
-
-if (bouwjaar >= 2015) fYear = 1.06;
-else if (bouwjaar >= 2000) fYear = 1.03;
-else if (bouwjaar >= 1980) fYear = 1.00;
-else if (bouwjaar >= 1945) fYear = 0.95;
-else fYear = 0.92;
-
-m2 *= fYear;
-breakdown.push({
-  stap: `Bouwjaar (${bouwjaar})`,
-  factor: fYear,
-  waarde: Math.round(m2)
-});
-
-/* ------------------------------------------
-   5. BUITENRUIMTE
------------------------------------------- */
-const outdoorPoints = {
-  "geen": 0,
-  "balkon": 8,
-  "dakterras": 15,
-  "tuin_klein": 25,
-  "tuin_groot": 40
-};
-
-const ext = outdoorPoints[buitenruimte] || 0;
-const fOutdoor = 1 + Math.min(ext / 200, 0.08);
-
-m2 *= fOutdoor;
-breakdown.push({
-  stap: `Buitenruimte (${buitenruimte})`,
-  factor: fOutdoor,
-  waarde: Math.round(m2)
-});
-
-/* ------------------------------------------
-   6. ERFPACHT
------------------------------------------- */
-const erfMap = {
-  "eigen": 1.00,
-  "erfpacht_afgekocht": 0.97,
-  "erfpacht_canon": 0.88
-};
-
-const fErf = erfMap[erfpacht] || 1;
-m2 *= fErf;
-
-breakdown.push({
-  stap: `Grondsituatie (${erfpacht})`,
-  factor: fErf,
-  waarde: Math.round(m2)
-});
-
-/* ------------------------------------------
-   7. SERVICEKOSTEN
------------------------------------------- */
-let fService = 1;
-if (servicekosten > 200) fService = 0.90;
-else if (servicekosten > 150) fService = 0.94;
-else if (servicekosten > 100) fService = 0.97;
-
-m2 *= fService;
-breakdown.push({
-  stap: `Servicekosten (${servicekosten} p/m)`,
-  factor: fService,
-  waarde: Math.round(m2)
-});
-
-/* ------------------------------------------
-   8. GROOTTESCHAAL (kleine woningen duurder)
------------------------------------------- */
-let fSize = 1;
-if (size < 60) fSize = 1.08;
-else if (size < 80) fSize = 1.03;
-else if (size > 140) fSize = 0.92;
-
-m2 *= fSize;
-breakdown.push({
-  stap: `Grootte-effect (${size} m²)`,
-  factor: fSize,
-  waarde: Math.round(m2)
-});
-
-/* ------------------------------------------
-   EINDE
------------------------------------------- */
-const estimatedValue = Math.round(size * m2);
-const low = Math.round(estimatedValue * 0.94);
-const high = Math.round(estimatedValue * 1.06);
-
-return {
-  m2: Math.round(m2),
-  price: estimatedValue,
-  low,
-  high,
-  breakdown
-};
+/**
+ * Stap 0: Bepaal de basis m²-prijs op basis van woningtype.
+ * Een appartement is per m² duurder dan een vrijstaand huis (minder grond/lucht).
+ */
+ function getBaseM2(buurtGemiddelde, woningType) {
+  const typeFactors = {
+    "appartement": 1.12,      // Duurder per m² (kleiner, efficiënt)
+    "benedenwoning": 1.08,
+    "bovenwoning": 1.05,
+    "tussenwoning": 1.00,     // De standaard
+    "hoekwoning": 1.02,
+    "twee_onder_een_kap": 0.97,
+    "vrijstaand": 0.94        // Goedkoper per m² (groot oppervlak, veel 'gang/zolder')
+  };
+  
+  // Fallback naar 1.0 als type onbekend is
+  const factor = typeFactors[woningType] || 1.00; 
+  return Math.round(buurtGemiddelde * factor);
 }
 
+function calculateValueDetailed({ size, rooms, label, bouwjaar, onderhoud, erfpacht, servicekosten, buitenruimte, woningType }) {
+
+  const breakdown = [];
+  
+  // 1. BASIS PRIJS
+  // We starten niet met het "domme" gemiddelde, maar het gemiddelde gecorrigeerd voor type.
+  let currentM2 = getBaseM2(avgM2, woningType);
+  
+  breakdown.push({ 
+    stap: `Startwaarde (${woningType || 'algemeen'})`, 
+    waarde: Math.round(currentM2), 
+    factor: (currentM2 / avgM2) // Laat zien hoeveel dit afwijkt van buurtgemiddelde
+  });
+
+  /* ------------------------------------------
+     A. GROOTTE-EFFECT (Logaritmisch)
+     Kleine woningen zijn altijd duurder per m². Grote woningen goedkoper.
+     We gebruiken 85m² als referentiepunt.
+  ------------------------------------------ */
+  const refSize = 85; 
+  // Power law: hoe kleiner het huis, hoe hoger de factor. 
+  // Macht 0.15 is een realistische markt-elasticiteit.
+  const sizeFactor = Math.pow((refSize / size), 0.15); 
+  
+  currentM2 *= sizeFactor;
+  breakdown.push({
+    stap: `Grootte-correctie (${size} m²)`,
+    factor: sizeFactor,
+    waarde: Math.round(currentM2)
+  });
+
+  /* ------------------------------------------
+     B. BOUWJAAR & LABEL (Interactie Check)
+     Voorkom dubbeltelling: Nieuwbouw is al goed geïsoleerd.
+  ------------------------------------------ */
+  
+  // 1. Bouwjaar correctie
+  let fYear = 1;
+  if (bouwjaar >= 2020) fYear = 1.08;       // Nieuwbouw premium
+  else if (bouwjaar >= 2010) fYear = 1.05;
+  else if (bouwjaar >= 2000) fYear = 1.02;
+  else if (bouwjaar >= 1990) fYear = 1.00;  // Referentie
+  else if (bouwjaar >= 1970) fYear = 0.94;  // Vaak mindere bouwkwaliteit
+  else if (bouwjaar >= 1930) fYear = 0.97;  // Jaren 30 populair (correctie omhoog)
+  else fYear = 0.92;                        // Oudbouw risico's
+
+  // 2. Energielabel correctie
+  const labelMap = { 
+    "A+++": 1.06, "A++": 1.05, "A+": 1.04, "A": 1.03, 
+    "B": 1.00, "C": 0.97, "D": 0.93, "E": 0.90, "F": 0.86, "G": 0.82 
+  };
+  let fLabel = labelMap[label] || 0.96;
+
+  // REALISME CHECK: Als huis > 2010 is, is label A standaard. 
+  // We verlagen de label-bonus om dubbeltelling met bouwjaar te voorkomen.
+  if (bouwjaar >= 2010 && ["A", "A+", "A++", "A+++"].includes(label)) {
+      fLabel = 1.005; // Nauwelijks extra bonus, zit al in bouwjaar
+  }
+
+  // Pas toe
+  currentM2 *= fYear;
+  breakdown.push({ stap: `Bouwjaar (${bouwjaar})`, factor: fYear, waarde: Math.round(currentM2) });
+  
+  currentM2 *= fLabel;
+  breakdown.push({ stap: `Energielabel (${label})`, factor: fLabel, waarde: Math.round(currentM2) });
+
+  /* ------------------------------------------
+     C. ONDERHOUD (Asymmetrisch)
+     Slecht onderhoud (kosten) weegt zwaarder dan luxe (sfeer).
+  ------------------------------------------ */
+  const maintMap = {
+    "slecht": 0.82,     // Zware afstraffing (verbouwingskosten)
+    "matig": 0.92,
+    "normaal": 1.00,
+    "goed": 1.03,
+    "luxe": 1.06,       // Luxe is smaakgevoelig
+    "zeer_luxe": 1.09
+  };
+  const fMaint = maintMap[onderhoud] || 1;
+  currentM2 *= fMaint;
+  
+  breakdown.push({ stap: `Staat van onderhoud (${onderhoud})`, factor: fMaint, waarde: Math.round(currentM2) });
+
+  /* ------------------------------------------
+     D. KAMERS
+  ------------------------------------------ */
+  // Minder zwaar wegend dan m2, maar relevant voor verhuurbaarheid/courantheid
+  let fRooms = 1;
+  if (rooms / size > 0.08) fRooms = 0.98; // Te veel hokjes ("konijnenhok")
+  else if (rooms >= 4) fRooms = 1.02;     // Gezinswoning
+  else if (rooms <= 2 && size > 80) fRooms = 0.97; // Inefficiënte indeling
+
+  currentM2 *= fRooms;
+  if(fRooms !== 1) {
+      breakdown.push({ stap: `Indeling (${rooms} kamers)`, factor: fRooms, waarde: Math.round(currentM2) });
+  }
+
+  /* ------------------------------------------
+     E. BEREKEN TUSSENSTAND
+     Nu hebben we de "Kale steen prijs". Hierna komen vaste bedragen.
+  ------------------------------------------ */
+  let estimatedPrice = currentM2 * size;
+
+  /* ------------------------------------------
+     F. BUITENRUIMTE (Lump sum met CAP)
+     Een tuin is geld waard, maar niet lineair met de huisprijs.
+  ------------------------------------------ */
+  const outdoorFactors = {
+    "geen": 0,
+    "balkon": 0.03,      
+    "dakterras": 0.05,   
+    "tuin_klein": 0.07,  
+    "tuin_groot": 0.12   
+  };
+  
+  let outdoorPct = outdoorFactors[buitenruimte] || 0;
+  let outdoorValue = estimatedPrice * outdoorPct;
+  
+  // CAP: Maximaal €65.000 meerwaarde voor buitenruimte (tenzij landgoed, maar dat valt buiten dit model)
+  const maxOutdoorValue = 65000; 
+  if (outdoorValue > maxOutdoorValue) outdoorValue = maxOutdoorValue;
+
+  estimatedPrice += outdoorValue;
+  
+  // Terugrekenen naar m2 voor de tabel (zodat de tabel consistent blijft)
+  let m2WithOutdoor = estimatedPrice / size;
+  
+  if (outdoorValue > 0) {
+      breakdown.push({ 
+          stap: `Buitenruimte (${buitenruimte})`, 
+          factor: m2WithOutdoor / currentM2, // Virtuele factor
+          waarde: Math.round(m2WithOutdoor) 
+      });
+  }
+  currentM2 = m2WithOutdoor;
+
+  /* ------------------------------------------
+     G. HARDE CORRECTIES (Erfpacht & VvE)
+     Dit zijn financiële lasten die direct van de koopsom af gaan.
+  ------------------------------------------ */
+  let fFinancial = 1;
+
+  // Erfpacht
+  if (erfpacht === "erfpacht_canon") fFinancial *= 0.90; // Canon drukt leencapaciteit
+  if (erfpacht === "erfpacht_afgekocht") fFinancial *= 0.98; // Vaak minder geliefd dan eigen grond
+
+  // Servicekosten (VvE)
+  if (servicekosten > 250) fFinancial *= 0.96; // Hoge maandlasten
+  
+  currentM2 *= fFinancial;
+  estimatedPrice *= fFinancial;
+
+  if (fFinancial !== 1) {
+      breakdown.push({ stap: `Financiële correcties (Erfpacht/VvE)`, factor: fFinancial, waarde: Math.round(currentM2) });
+  }
+
+  /* ------------------------------------------
+     EINDE & BANDBREEDTE (ONZEKERHEIDSMARGE)
+  ------------------------------------------ */
+  const finalPrice = Math.round(estimatedPrice);
+  const finalM2 = Math.round(finalPrice / size);
+
+  // Dynamische onzekerheid: 
+  // Hoe ouder of groter het huis, hoe minder zeker het model is.
+  let uncertainty = 0.05; // Basis 5%
+  if (bouwjaar < 1920) uncertainty += 0.025; // Oudbouw is 'gek'
+  if (size > 180) uncertainty += 0.03;       // Villa's zijn 'gek'
+  if (onderhoud === "slecht") uncertainty += 0.04; // Verbouwingen lopen vaak uit
+
+  const low = Math.round(finalPrice * (1 - uncertainty));
+  const high = Math.round(finalPrice * (1 + uncertainty));
+
+  return {
+    m2: finalM2,
+    price: finalPrice,
+    low,
+    high,
+    breakdown,
+    uncertaintyPct: (uncertainty * 100).toFixed(1)
+  };
+}
+
+
 /* ---------------------------------------------
-   13. Button → Berekening & Scatter Highlight
---------------------------------------------- */
-/* ---------------------------------------------
-   13. Button → Berekening, Scatter Highlight & Uitleg
+   13. Button → Berekening, Scatter & UI
 --------------------------------------------- */
 document.getElementById("btn-calc").onclick = () => {
 
-const s = Number(document.getElementById("input-size").value);
-const r = Number(document.getElementById("input-rooms").value);
-const l = document.getElementById("input-label").value;
+  // Inputs ophalen
+  const s = Number(document.getElementById("input-size").value);
+  const r = Number(document.getElementById("input-rooms").value);
+  const l = document.getElementById("input-label").value;
+  const bouwjaar = Number(document.getElementById("input-year").value || 1990);
+  const onderhoud = document.getElementById("input-condition").value;
+  const erfpacht = document.getElementById("input-lease").value;
+  const servicekosten = Number(document.getElementById("input-service").value || 0);
+  const buitenruimte = document.getElementById("input-outdoor").value;
+  
+  // PROBEER WONINGTYPE TE VINDEN, ANDERS DEFAULT
+  const typeElem = document.getElementById("input-type");
+  const woningType = typeElem ? typeElem.value : "tussenwoning";
 
-const bouwjaar = Number(document.getElementById("input-year").value || 1990);
-const onderhoud = document.getElementById("input-condition").value;
-const erfpacht = document.getElementById("input-lease").value;
-const servicekosten = Number(document.getElementById("input-service").value || 0);
-const buitenruimte = document.getElementById("input-outdoor").value;
+  if (!s) {
+    alert("Voer minimaal woonoppervlakte in!");
+    return;
+  }
 
-if (!s) {
-  alert("Voer minimaal woonoppervlakte in!");
-  return;
-}
+  // De berekening
+  const result = calculateValueDetailed({
+    size: s,
+    rooms: r,
+    label: l,
+    bouwjaar,
+    onderhoud,
+    erfpacht,
+    servicekosten,
+    buitenruimte,
+    woningType
+  });
 
-const result = calculateValueDetailed({
-  size: s,
-  rooms: r,
-  label: l,
-  bouwjaar,
-  onderhoud,
-  erfpacht,
-  servicekosten,
-  buitenruimte
-});
+  // Punt in scatter chart (Zorg dat buildScatter functie bestaat)
+  if (typeof buildScatter === "function") {
+      buildScatter({ x: s, y: result.price, address: "Jouw woning" });
+  }
 
-// Punt in scatter chart
-buildScatter({ x: s, y: result.price, address: "Jouw woning" });
+  // Uitleg genereren
+  const totaleFactor = (result.m2 / avgM2) || 1;
+  const totaleFactorPct = ((totaleFactor - 1) * 100).toFixed(1);
+  const deltaColor = totaleFactorPct >= 0 ? "text-emerald-600" : "text-red-600";
+  const deltaSign = totaleFactorPct >= 0 ? "+" : "";
 
-// Mooie lange berekening + uitleg
-const totaleFactor = (result.m2 / avgM2) || 1;
-const totaleFactorPct = ((totaleFactor - 1) * 100).toFixed(1);
+  const uitlegHtml = `
+    <div class="bg-white border rounded p-4 space-y-4 shadow-sm">
+      <h3 class="font-semibold text-lg mb-1 flex items-center gap-2">
+        <span>🏡</span> Realistische Marktwaarde Indicatie
+      </h3>
 
-const uitlegHtml = `
-  <div class="bg-white border rounded p-4 space-y-4">
-    <h3 class="font-semibold text-lg mb-1">📐 Stap-voor-stap berekening van de marktwaarde</h3>
-
-    <!-- SAMENVATTING -->
-    <div class="bg-gray-50 border border-gray-200 rounded p-3 text-sm">
-      <p>
-        We starten met de gemiddelde m²-prijs in de referentiemarkt
-        (<strong>€${avgM2.toLocaleString()}</strong> per m²) en passen daar stap voor stap 
-        correcties op toe voor <strong>energielabel, kamers, onderhoud, bouwjaar, 
-        buitenruimte, grondsituatie, servicekosten</strong> en het 
-        <strong>grootte-effect</strong> van je woning.
-      </p>
-    </div>
-
-    <!-- TABEL: STAPPEN -->
-    <div>
-      <h4 class="font-semibold mb-2 text-sm uppercase tracking-wide text-gray-600">1. Correcties per factor</h4>
-      <div class="overflow-x-auto">
-        <table class="min-w-full text-sm border border-gray-200 rounded">
-          <thead class="bg-gray-100">
-            <tr>
-              <th class="px-3 py-2 text-left">Stap</th>
-              <th class="px-3 py-2 text-right">Factor</th>
-              <th class="px-3 py-2 text-right">Δ t.o.v. vorige</th>
-              <th class="px-3 py-2 text-right">Nieuwe m²-waarde</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${result.breakdown.map((step, index) => {
-              const prev = index === 0 ? step.waarde : result.breakdown[index - 1].waarde;
-              const deltaPct = index === 0 
-                ? "0.0%" 
-                : (((step.waarde - prev) / prev) * 100).toFixed(1) + "%";
-              return `
-                <tr class="border-t">
-                  <td class="px-3 py-2">${step.stap}</td>
-                  <td class="px-3 py-2 text-right">${step.factor.toFixed(3)}</td>
-                  <td class="px-3 py-2 text-right ${deltaPct.startsWith('-') ? 'text-red-600' : 'text-emerald-600'}">
-                    ${deltaPct}
-                  </td>
-                  <td class="px-3 py-2 text-right">€${step.waarde.toLocaleString()}</td>
-                </tr>
-              `;
-            }).join("")}
-          </tbody>
-        </table>
+      <div class="bg-blue-50 border border-blue-100 rounded p-3 text-sm text-blue-900">
+        <p>
+          Op basis van een <strong>${woningType}</strong> van ${s} m² in deze buurt. 
+          We hebben de gemiddelde m²-prijs geavanceerd gecorrigeerd voor 
+          grootte-efficiëntie, bouwkwaliteit en marktfactoren.
+        </p>
       </div>
+
+      <div>
+        <h4 class="font-semibold mb-2 text-xs uppercase tracking-wide text-gray-500">1. Waardebepaling factoren</h4>
+        <div class="overflow-x-auto rounded border border-gray-200">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-gray-600">
+              <tr>
+                <th class="px-3 py-2 text-left font-medium">Factor</th>
+                <th class="px-3 py-2 text-right font-medium">Impact</th>
+                <th class="px-3 py-2 text-right font-medium">Tussenstand (m²)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              ${result.breakdown.map((step, index) => {
+                const prev = index === 0 ? avgM2 : result.breakdown[index - 1].waarde;
+                // Bereken delta % t.o.v. vorige stap
+                const rawDelta = ((step.waarde - prev) / prev) * 100;
+                const deltaStr = rawDelta.toFixed(1) + "%";
+                const color = rawDelta > 0 ? "text-emerald-600" : (rawDelta < 0 ? "text-red-600" : "text-gray-400");
+                const plus = rawDelta > 0 ? "+" : "";
+
+                return `
+                  <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-3 py-2 text-gray-700">${step.stap}</td>
+                    <td class="px-3 py-2 text-right font-medium ${color}">
+                      ${index === 0 ? '-' : plus + deltaStr}
+                    </td>
+                    <td class="px-3 py-2 text-right text-gray-900">€${step.waarde.toLocaleString()}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          
+          <div class="p-3 bg-gray-50 rounded border border-gray-200">
+             <h4 class="font-semibold mb-2 text-xs uppercase tracking-wide text-gray-500">2. De Som</h4>
+             <div class="text-sm space-y-1 font-mono text-gray-700">
+                <div class="flex justify-between">
+                    <span>Oppervlakte:</span>
+                    <span>${s} m²</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Gecorrigeerde prijs:</span>
+                    <span>€${result.m2.toLocaleString()} /m²</span>
+                </div>
+                <div class="border-t border-gray-300 my-1"></div>
+                <div class="flex justify-between font-bold text-gray-900 text-base">
+                    <span>Taxatiewaarde:</span>
+                    <span>€${result.price.toLocaleString()}</span>
+                </div>
+             </div>
+             <p class="text-xs text-gray-500 mt-2">
+                Dit is ${deltaSign}${totaleFactorPct}% t.o.v. de gemiddelde buurtprijs.
+             </p>
+          </div>
+
+          <div class="p-3 bg-indigo-50 rounded border border-indigo-100 flex flex-col justify-center">
+             <h4 class="font-semibold mb-1 text-xs uppercase tracking-wide text-indigo-800">3. Betrouwbaarheid</h4>
+             <p class="text-sm text-indigo-900 mb-2">
+                Gezien de specificaties hanteren we een marge van <strong>±${result.uncertaintyPct}%</strong>.
+             </p>
+             <div class="text-center bg-white rounded py-2 px-3 border border-indigo-100 shadow-sm">
+                <span class="block text-xs text-gray-500">Geschatte bandbreedte</span>
+                <span class="font-bold text-indigo-700 text-lg">
+                    €${result.low.toLocaleString()} – €${result.high.toLocaleString()}
+                </span>
+             </div>
+          </div>
+      </div>
+
+      <p class="text-xs text-gray-400 mt-2 italic text-center">
+        * Dit model gebruikt een logaritmische schaal voor grootte en corrigeert voor dubbeltelling bij nieuwbouwlabels. 
+        Erfpacht en VvE kosten zijn financiële correcties. Raadpleeg voor een bindende waarde altijd een makelaar.
+      </p>
     </div>
+  `;
 
-    <!-- FORMULE -->
-    <div>
-      <h4 class="font-semibold mb-1 text-sm uppercase tracking-wide text-gray-600">2. Formule marktwaarde</h4>
-      <p class="text-sm">
-        Na alle correcties komen we uit op een indicatieve m²-prijs van  
-        <strong>€${result.m2.toLocaleString()}</strong> per m²
-        (in totaal <strong>${totaleFactorPct}%</strong> verschil ten opzichte van het
-        marktgemiddelde van €${avgM2.toLocaleString()} per m²).
-      </p>
-      <p class="mt-2 text-sm">
-        De geschatte marktwaarde wordt dan berekend als:
-      </p>
-      <p class="mt-1 text-sm font-mono bg-gray-50 border border-gray-200 rounded px-3 py-2">
-        waarde = woonoppervlakte × gecorrigeerde m²-prijs<br>
-        waarde = ${s} m² × €${result.m2.toLocaleString()} ≈ 
-        <strong>€${result.price.toLocaleString()}</strong>
-      </p>
-    </div>
-
-    <!-- BEREIK -->
-    <div>
-      <h4 class="font-semibold mb-1 text-sm uppercase tracking-wide text-gray-600">3. Waardebandbreedte</h4>
-      <p class="text-sm">
-        Omdat de markt nooit 100% exact is, tonen we een bandbreedte van ongeveer 
-        <strong>±6%</strong> rondom de berekende waarde.
-      </p>
-      <p class="mt-1 text-sm">
-        <strong>Indicatieve bandbreedte:</strong><br>
-        <span class="inline-block mt-1 bg-blue-50 border border-blue-100 rounded px-3 py-1">
-          €${result.low.toLocaleString()} – €${result.high.toLocaleString()}
-        </span>
-      </p>
-    </div>
-
-    <!-- UITLEG IN WOORDEN -->
-    <div>
-      <h4 class="font-semibold mb-1 text-sm uppercase tracking-wide text-gray-600">4. Uitleg in woorden</h4>
-      <p class="text-sm text-gray-800">
-        Voor deze woning gaan we uit van <strong>${s} m²</strong>, 
-        <strong>${r || "onbekend aantal"} kamers</strong> en energielabel <strong>${l}</strong>.
-        Het model kijkt naar vergelijkbare woningen in de buurt en corrigeert vervolgens voor:
-      </p>
-      <ul class="mt-2 text-sm list-disc list-inside text-gray-800 space-y-1">
-        <li><strong>Energielabel</strong>: betere labels (A t/m A+++) krijgen een opslag, mindere labels een korting.</li>
-        <li><strong>Aantal kamers</strong>: meer kamers bij hetzelfde aantal m² is aantrekkelijker, vooral voor gezinnen.</li>
-        <li><strong>Onderhoud / afwerking</strong>: een luxe of zeer luxe afwerking tilt de m²-waarde omhoog, matig/slecht drukt de prijs.</li>
-        <li><strong>Bouwjaar</strong>: jongere bouwjaren scoren beter op isolatie, installaties en onderhoud.</li>
-        <li><strong>Buitenruimte</strong>: balkon, dakterras of tuin voegen waarde toe ten opzichte van een woning zonder buitenruimte.</li>
-        <li><strong>Grondsituatie</strong>: erfpacht (zeker met lopende canon) drukt de marktwaarde ten opzichte van eigen grond.</li>
-        <li><strong>Servicekosten</strong>: hoge maandlasten via de VvE maken een woning minder betaalbaar en drukken de waarde.</li>
-        <li><strong>Grootte-effect</strong>: kleinere woningen zijn relatief duurder per m²; hele grote woningen juist iets goedkoper per m².</li>
-      </ul>
-      <p class="mt-3 text-sm text-gray-700">
-        Dit is géén officieel taxatierapport, maar een datagedreven indicatie op basis van
-        referentietransacties en een reeks marktcorrecties. Een taxateur kan bij een fysieke opname
-        altijd nog extra aspecten meenemen (lichtinval, geluid, exacte ligging, staat van VvE, etc.).
-      </p>
-    </div>
-  </div>
-`;
-
-document.getElementById("user-output").innerHTML = uitlegHtml;
-
-document.getElementById("ai-valuation").innerHTML = `
-  <strong>Waardebandbreedte (indicatief):</strong><br>
-  €${result.low.toLocaleString()} – €${result.high.toLocaleString()}
-`;
+  document.getElementById("user-output").innerHTML = uitlegHtml;
+  
+  // Update eventuele side-bar samenvatting
+  const sideVal = document.getElementById("ai-valuation");
+  if(sideVal) {
+      sideVal.innerHTML = `
+        <strong>Geschatte Waarde:</strong><br>
+        <span class="text-xl">€${result.price.toLocaleString()}</span><br>
+        <span class="text-xs text-gray-500">€${result.low.toLocaleString()} - €${result.high.toLocaleString()}</span>
+      `;
+  }
 };
-
 /* ---------------------------------------------
    ADVANCED SECTION TOGGLE
 --------------------------------------------- */
