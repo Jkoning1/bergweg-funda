@@ -180,12 +180,12 @@
 
       <div id="user-output" class="mt-6 text-gray-800 text-sm"></div>
 
-      <!-- RADAR CHART -->
-      <div class="mt-8">
-        <h3 class="text-lg font-semibold mb-3">📊 Factor Radar Chart</h3>
-        <canvas id="chart-radar" height="200"></canvas>
-      </div>
-
+      <!-- RADAR CHART – factor impact -->
+<div class="mt-6">
+    <h2 class="text-lg font-semibold mb-3">Impact per factor</h2>
+    <canvas id="chart-radar" height="180"></canvas>
+  </div>
+  
     </div>
 
     <!-- TABS -->
@@ -794,6 +794,71 @@
 
     // initial scatter zonder highlight
     buildScatter();
+
+/* ---------------------------------------------
+   RADAR CHART – Impact per factor (%)
+--------------------------------------------- */
+let radarChart;
+
+function renderRadarChart(breakdown) {
+
+  const labels = [];
+  const deltas = [];
+
+  breakdown.forEach((step, index) => {
+    const prev = index === 0 
+      ? step.waarde
+      : breakdown[index - 1].waarde;
+
+    const delta = ((step.waarde - prev) / prev) * 100;
+    labels.push(step.stap);
+    deltas.push(parseFloat(delta.toFixed(1)));
+  });
+
+  const ctx = document.getElementById("chart-radar").getContext("2d");
+
+  if (radarChart) radarChart.destroy();
+
+  radarChart = new Chart(ctx, {
+    type: "radar",
+    data: {
+      labels: labels,
+      datasets: [{
+        data: deltas,
+        label: "Factorimpact (%)",
+        fill: true,
+        backgroundColor: "rgba(37, 99, 235, 0.25)",
+        borderColor: "rgba(37, 99, 235, 1)",
+        borderWidth: 2,
+        pointBackgroundColor: "rgba(37, 99, 235, 1)",
+        pointBorderColor: "#fff",
+        pointHoverBorderColor: "rgba(37, 99, 235, 1)"
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          suggestedMin: Math.min(...deltas, -10),
+          suggestedMax: Math.max(...deltas, 10),
+          ticks: {
+            callback: v => v + "%",
+            backdropColor: "transparent",
+            color: "#555"
+          },
+          angleLines: { color: "#e5e7eb" },
+          grid: { color: "#e5e7eb" },
+          pointLabels: {
+            color: "#333",
+            font: { size: 12 }
+          }
+        }
+      }
+    }
+  });
+}
+
 /* ---------------------------------------------
    11. Tabswitching
 --------------------------------------------- */
@@ -1171,6 +1236,9 @@ document.getElementById("btn-calc").onclick = () => {
   `;
 
   document.getElementById("user-output").innerHTML = uitlegHtml;
+
+// ⭐ Radar chart activeren
+renderRadarChart(result.breakdown);
   
   // Update eventuele side-bar samenvatting
   const sideVal = document.getElementById("ai-valuation");
