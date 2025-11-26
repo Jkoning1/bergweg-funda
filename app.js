@@ -3,10 +3,10 @@ const { useState } = React;
 
 // Recharts via UMD (window.Recharts)
 const {
-  BarChart, Bar, ScatterChart, Scatter,
-  XAxis, YAxis, CartesianGrid, Tooltip,
-  Legend, ResponsiveContainer, PieChart, Pie, Cell
-} = Recharts;
+    BarChart, Bar, ScatterChart, Scatter,
+    XAxis, YAxis, CartesianGrid, Tooltip,
+    Legend, ResponsiveContainer, PieChart, Pie, Cell
+  } = window.Recharts;
 
 const BergwegAnalysis = () => {
   const [activeTab, setActiveTab] = useState("overview");
