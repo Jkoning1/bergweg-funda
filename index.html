@@ -84,6 +84,15 @@
         <button data-tab="details" class="tab-btn px-6 py-3 text-gray-600">
           Details
         </button>
+        <button data-tab="heatmap" class="tab-btn px-6 py-3 text-gray-600">
+          Heatmap
+        </button>
+        <button data-tab="labels" class="tab-btn px-6 py-3 text-gray-600">
+          Energielabels
+        </button>
+        <button data-tab="trend" class="tab-btn px-6 py-3 text-gray-600">
+          Trend
+        </button>
       </div>
 
       <div class="p-6">
@@ -120,6 +129,24 @@
       </div>
     </div>
 
+    <!-- HEATMAP -->
+    <div id="tab-heatmap" class="hidden mt-8">
+      <h2 class="text-lg font-semibold mb-4">Heatmap: Prijs per m² per aantal kamers</h2>
+      <canvas id="chart-heatmap" height="200"></canvas>
+    </div>
+
+    <!-- LABEL ANALYSE -->
+    <div id="tab-labels" class="hidden mt-8">
+      <h2 class="text-lg font-semibold mb-4">Gemiddelde prijs per m² per energielabel</h2>
+      <canvas id="chart-labels" height="120"></canvas>
+    </div>
+
+    <!-- TREND -->
+    <div id="tab-trend" class="hidden mt-8">
+      <h2 class="text-lg font-semibold mb-4">Vraagprijs Trend (gesimuleerd)</h2>
+      <canvas id="chart-trend" height="120"></canvas>
+    </div>
+
     <!-- INSIGHTS -->
     <div class="bg-white rounded shadow mt-6 p-6">
       <h3 class="text-lg font-semibold mb-4">📊 Belangrijkste inzichten</h3>
@@ -131,6 +158,7 @@
       <h3 class="text-lg font-semibold mb-4">🤖 Marktwaardeschatting</h3>
       <p id="ai-valuation" class="text-gray-800 text-sm"></p>
     </div>
+
   </div>
   <script>
     /* ---------------------------------------------
@@ -198,195 +226,265 @@
       { address: "Bergweg 162-A", price: 600000, size: 142, rooms: 2, label: "A", status: "Verkocht" },
       { address: "Bergweg 55-C", price: 315000, size: 59, rooms: 2, label: "B", status: "Verkocht" }
     ];
-    
-    /* ---------------------------------------------
-       2. Preprocessing
-    --------------------------------------------- */
-    const propsWithM2 = properties
-      .filter(p => p.size > 0)
-      .map(p => ({ ...p, pricePerM2: Math.round(p.price / p.size) }));
-    
-    const avg = arr => Math.round(arr.reduce((s, v) => s + v, 0) / arr.length);
-    
-    const avgM2 = avg(propsWithM2.map(p => p.pricePerM2));
-    const avgPrice = avg(propsWithM2.map(p => p.price));
-    const avgSize = avg(propsWithM2.map(p => p.size));
-    
-    const maxM2 = Math.max(...propsWithM2.map(p => p.pricePerM2));
-    const minM2 = Math.min(...propsWithM2.map(p => p.pricePerM2));
-    
-    const soldCount = properties.filter(p => p.status === "Verkocht").length;
-    const soldPct = Math.round((soldCount / properties.length) * 100);
-    
-    const AplusCount = properties.filter(p => p.label.startsWith("A")).length;
-    const AplusPct = Math.round((AplusCount / properties.length) * 100);
-    
-    const m2Ranges = [
-      { range: "€3.000–€4.000", min: 3000, max: 4000, count: 0 },
-      { range: "€4.000–€5.000", min: 4000, max: 5000, count: 0 },
-      { range: "€5.000–€6.000", min: 5000, max: 6000, count: 0 },
-      { range: "€6.000–€7.000", min: 6000, max: 7000, count: 0 },
-      { range: "€7.000+", min: 7000, max: 20000, count: 0 }
-    ];
-    
-    propsWithM2.forEach(p => {
-      const r = m2Ranges.find(x => p.pricePerM2 >= x.min && p.pricePerM2 < x.max);
-      if (r) r.count++;
-    });
-    
-    /* ---------------------------------------------
-       3. KPI's
-    --------------------------------------------- */
-    document.getElementById("kpis").innerHTML = `
-      <div class="bg-white p-6 shadow rounded">
-        <p class="text-sm text-gray-600">Gemiddelde prijs/m²</p>
-        <p class="text-2xl font-bold text-blue-600">€${avgM2.toLocaleString()}</p>
-      </div>
-      <div class="bg-white p-6 shadow rounded">
-        <p class="text-sm text-gray-600">Gemiddelde prijs</p>
-        <p class="text-2xl font-bold text-green-600">€${avgPrice.toLocaleString()}</p>
-      </div>
-      <div class="bg-white p-6 shadow rounded">
-        <p class="text-sm text-gray-600">Gem. oppervlakte</p>
-        <p class="text-2xl font-bold text-purple-600">${avgSize} m²</p>
-      </div>
+   
+/* ---------------------------------------------
+   2. Preprocessing
+--------------------------------------------- */
+const propsWithM2 = properties
+  .filter(p => p.size > 0)
+  .map(p => ({ ...p, pricePerM2: Math.round(p.price / p.size) }));
+
+const avg = arr => Math.round(arr.reduce((s, v) => s + v, 0) / arr.length);
+
+const avgM2   = avg(propsWithM2.map(p => p.pricePerM2));
+const avgPrice = avg(propsWithM2.map(p => p.price));
+const avgSize  = avg(propsWithM2.map(p => p.size));
+
+const maxM2 = Math.max(...propsWithM2.map(p => p.pricePerM2));
+const minM2 = Math.min(...propsWithM2.map(p => p.pricePerM2));
+
+const soldCount = properties.filter(p => p.status === "Verkocht").length;
+const soldPct   = Math.round((soldCount / properties.length) * 100);
+
+const AplusCount = properties.filter(p => p.label.startsWith("A")).length;
+const AplusPct   = Math.round((AplusCount / properties.length) * 100);
+
+const m2Ranges = [
+  { range: "€3.000–€4.000", min: 3000, max: 4000, count: 0 },
+  { range: "€4.000–€5.000", min: 4000, max: 5000, count: 0 },
+  { range: "€5.000–€6.000", min: 5000, max: 6000, count: 0 },
+  { range: "€6.000–€7.000", min: 6000, max: 7000, count: 0 },
+  { range: "€7.000+",      min: 7000, max: 20000, count: 0 },
+];
+
+propsWithM2.forEach(p => {
+  const r = m2Ranges.find(x => p.pricePerM2 >= x.min && p.pricePerM2 < x.max);
+  if (r) r.count++;
+});
+
+/* ---------------------------------------------
+   3. KPI’s
+--------------------------------------------- */
+document.getElementById("kpis").innerHTML = `
+  <div class="bg-white p-6 shadow rounded">
+    <p class="text-sm text-gray-600">Gemiddelde prijs/m²</p>
+    <p class="text-2xl font-bold text-blue-600">€${avgM2.toLocaleString()}</p>
+  </div>
+  <div class="bg-white p-6 shadow rounded">
+    <p class="text-sm text-gray-600">Gemiddelde prijs</p>
+    <p class="text-2xl font-bold text-green-600">€${avgPrice.toLocaleString()}</p>
+  </div>
+  <div class="bg-white p-6 shadow rounded">
+    <p class="text-sm text-gray-600">Gem. oppervlakte</p>
+    <p class="text-2xl font-bold text-purple-600">${avgSize} m²</p>
+  </div>
+`;
+
+/* ---------------------------------------------
+   4. Insights
+--------------------------------------------- */
+const addInsight = txt => {
+  const li = document.createElement("li");
+  li.innerHTML = `<span class="text-blue-500 mr-2">•</span> ${txt}`;
+  document.getElementById("insights").appendChild(li);
+};
+
+addInsight(`Gemiddelde prijs per m²: €${avgM2.toLocaleString()}.`);
+addInsight(`${soldPct}% van alle woningen is verkocht.`);
+addInsight(`Laagste m²-prijs: €${minM2.toLocaleString()}. Hoogste: €${maxM2.toLocaleString()}.`);
+addInsight(`${AplusPct}% van de woningen heeft energielabel A of hoger.`);
+
+/* ---------------------------------------------
+   5. Detailtabel
+--------------------------------------------- */
+propsWithM2
+  .sort((a, b) => b.pricePerM2 - a.pricePerM2)
+  .forEach(p => {
+    document.getElementById("table-body").innerHTML += `
+      <tr class="border-b">
+        <td class="px-4 py-2">${p.address}</td>
+        <td class="px-4 py-2">€${p.price.toLocaleString()}</td>
+        <td class="px-4 py-2">${p.size}</td>
+        <td class="px-4 py-2 text-blue-600 font-bold">€${p.pricePerM2}</td>
+        <td class="px-4 py-2">${p.status}</td>
+      </tr>
     `;
-    
-    /* ---------------------------------------------
-       4. Insights
-    --------------------------------------------- */
-    const addInsight = txt => {
-      const ul = document.getElementById("insights");
-      const li = document.createElement("li");
-      li.innerHTML = `<span class='text-blue-500 mr-2'>•</span>${txt}`;
-      ul.appendChild(li);
-    };
-    
-    addInsight(`Gemiddelde prijs per m²: €${avgM2.toLocaleString()}.`);
-    addInsight(`${soldPct}% van alle woningen is verkocht.`);
-    addInsight(`Laagste m²-prijs: €${minM2.toLocaleString()}. Hoogste: €${maxM2.toLocaleString()}.`);
-    addInsight(`${AplusPct}% van de woningen heeft energielabel A of hoger.`);
-    
-    /* ---------------------------------------------
-       5. Details tabel
-    --------------------------------------------- */
-    const table = document.getElementById("table-body");
-    
-    propsWithM2
-      .sort((a, b) => b.pricePerM2 - a.pricePerM2)
-      .forEach(p => {
-        table.innerHTML += `
-          <tr class="border-b">
-            <td class="px-4 py-2">${p.address}</td>
-            <td class="px-4 py-2">€${p.price.toLocaleString()}</td>
-            <td class="px-4 py-2">${p.size}</td>
-            <td class="px-4 py-2 text-blue-600 font-bold">€${p.pricePerM2}</td>
-            <td class="px-4 py-2">${p.status}</td>
-          </tr>`;
-      });
-    
-    /* ---------------------------------------------
-       6. Charts
-    --------------------------------------------- */
-    // — Bar Chart —
-    new Chart(
-      document.getElementById("chart-m2ranges"),
-      {
-        type: "bar",
-        data: {
-          labels: m2Ranges.map(r => r.range),
-          datasets: [{
-            label: "Aantal woningen",
-            data: m2Ranges.map(r => r.count),
-            backgroundColor: "#3b82f6"
-          }]
-        }
-      }
-    );
-    
-    // — Scatter Chart —
-    let scatterChart;
-    
-    function buildScatter(highlight = null) {
-      if (scatterChart) scatterChart.destroy();
-    
-      scatterChart = new Chart(
-        document.getElementById("chart-scatter"),
+  });
+
+/* ---------------------------------------------
+   6. Grafieken
+--------------------------------------------- */
+
+/* ---- Bar chart: m2 ranges ---- */
+new Chart(document.getElementById("chart-m2ranges"), {
+  type: "bar",
+  data: {
+    labels: m2Ranges.map(r => r.range),
+    datasets: [{
+      label: "Aantal woningen",
+      data: m2Ranges.map(r => r.count),
+      backgroundColor: "#3b82f6"
+    }]
+  }
+});
+
+/* ---- Scatter ---- */
+let scatterChart;
+
+function buildScatter(highlight = null) {
+  if (scatterChart) scatterChart.destroy();
+
+  scatterChart = new Chart(document.getElementById("chart-scatter"), {
+    type: "scatter",
+    data: {
+      datasets: [
         {
-          type: "scatter",
-          data: {
-            datasets: [
-              {
-                label: "Overige woningen",
-                data: propsWithM2.map(p => ({ x: p.size, y: p.price })),
-                pointRadius: 5,
-                backgroundColor: "#8884d8"
-              },
-              highlight ? {
-                label: "Jouw woning",
-                data: [highlight],
-                pointRadius: 10,
-                backgroundColor: "red"
-              } : null
-            ].filter(Boolean)
-          }
-        }
-      );
+          label: "Overige woningen",
+          data: propsWithM2.map(p => ({ x: p.size, y: p.price })),
+          pointRadius: 5,
+          backgroundColor: "#8884d8"
+        },
+        highlight ? {
+          label: "Jouw woning",
+          data: [highlight],
+          pointRadius: 10,
+          backgroundColor: "red"
+        } : null
+      ].filter(Boolean)
     }
-    
-    buildScatter();
-    
-    /* ---------------------------------------------
-       7. Tabs
-    --------------------------------------------- */
-    document.querySelectorAll(".tab-btn").forEach(btn => {
-      btn.onclick = () => {
-        const tab = btn.dataset.tab;
-    
-        document.querySelectorAll(".tab-btn").forEach(b => {
-          b.classList.remove("border-blue-600", "border-b-2", "text-blue-600");
-          b.classList.add("text-gray-600");
-        });
-    
-        btn.classList.add("border-b-2", "border-blue-600", "text-blue-600");
-    
-        document.querySelectorAll("[id^='tab-']").forEach(div => div.classList.add("hidden"));
-        document.getElementById("tab-" + tab).classList.remove("hidden");
-      };
+  });
+}
+
+buildScatter();
+
+/* ---- Heatmap ---- */
+const heatmapMatrix = {};
+propsWithM2.forEach(p => {
+  if (!heatmapMatrix[p.rooms]) heatmapMatrix[p.rooms] = [];
+  heatmapMatrix[p.rooms].push(p.pricePerM2);
+});
+
+const heatmapLabels = Object.keys(heatmapMatrix).sort((a, b) => a - b);
+const heatmapValues = heatmapLabels.map(r => {
+  const arr = heatmapMatrix[r];
+  return Math.round(arr.reduce((s, v) => s + v, 0) / arr.length);
+});
+
+const heatColors = heatmapValues.map(v => {
+  const ratio = (v - minM2) / (maxM2 - minM2);
+  const red = Math.round(255 * ratio);
+  const green = Math.round(255 * (1 - ratio));
+  return `rgb(${red}, ${green}, 80)`;
+});
+
+new Chart(document.getElementById("chart-heatmap"), {
+  type: "bar",
+  data: {
+    labels: heatmapLabels.map(x => `${x} kamers`),
+    datasets: [{
+      data: heatmapValues,
+      backgroundColor: heatColors
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } }
+  }
+});
+
+/* ---- Label analyse ---- */
+const labelGroups = {};
+propsWithM2.forEach(p => {
+  if (!labelGroups[p.label]) labelGroups[p.label] = [];
+  labelGroups[p.label].push(p.pricePerM2);
+});
+
+const labelNames = Object.keys(labelGroups).sort();
+const labelAvg = labelNames.map(l => {
+  const arr = labelGroups[l];
+  return Math.round(arr.reduce((s, v) => s + v, 0) / arr.length);
+});
+
+new Chart(document.getElementById("chart-labels"), {
+  type: "bar",
+  data: {
+    labels: labelNames,
+    datasets: [{
+      label: "Gem € / m²",
+      data: labelAvg,
+      backgroundColor: "#10b981"
+    }]
+  }
+});
+
+/* ---- Trend ---- */
+const months = ["Jan","Feb","Mrt","Apr","Mei","Jun","Jul","Aug","Sep"];
+const trendData = months.map(() => avgPrice * (0.95 + Math.random() * 0.1));
+
+new Chart(document.getElementById("chart-trend"), {
+  type: "line",
+  data: {
+    labels: months,
+    datasets: [{
+      label: "Gemiddelde vraagprijs",
+      data: trendData,
+      borderColor: "#3b82f6",
+      tension: 0.4
+    }]
+  }
+});
+
+/* ---------------------------------------------
+   7. Tabs
+--------------------------------------------- */
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.onclick = () => {
+    const tab = btn.dataset.tab;
+
+    document.querySelectorAll(".tab-btn").forEach(b => {
+      b.classList.remove("border-blue-600","border-b-2","text-blue-600");
+      b.classList.add("text-gray-600");
     });
-    
-    /* ---------------------------------------------
-       8. Woning invoeren + highlight + waardering
-    --------------------------------------------- */
-    document.getElementById("btn-calc").onclick = () => {
-      const s = Number(document.getElementById("input-size").value);
-      const r = Number(document.getElementById("input-rooms").value);
-      const l = document.getElementById("input-label").value;
-    
-      if (!s) {
-        alert("Voer minimaal woonoppervlakte in!");
-        return;
-      }
-    
-      const userM2 = Math.round(avgM2 * (l.startsWith("A") ? 1.03 : 0.97));
-      const estPrice = Math.round(s * userM2);
-    
-      buildScatter({ x: s, y: estPrice });
-    
-      document.getElementById("user-output").innerHTML = `
-        <p><strong>Geschatte waarde per m²:</strong> €${userM2.toLocaleString()}</p>
-        <p><strong>Geschatte waarde woning:</strong> €${estPrice.toLocaleString()}</p>
-      `;
-    
-      document.getElementById("ai-valuation").innerHTML = `
-        Op basis van alle woningen op de Bergweg, jouw ingevoerde kenmerken (m², kamers, energielabel) 
-        en marktgemiddelden, verwachten wij een reële vraagprijs tussen
-        <strong>€${(estPrice * 0.93).toLocaleString()}</strong> en 
-        <strong>€${(estPrice * 1.05).toLocaleString()}</strong>.
-      `;
-    };
-    </script>
-    
-    </body>
-    </html>
-    
+
+    btn.classList.add("border-b-2","border-blue-600","text-blue-600");
+
+    document.querySelectorAll("[id^='tab-']").forEach(div =>
+      div.classList.add("hidden")
+    );
+
+    document.getElementById("tab-" + tab).classList.remove("hidden");
+  };
+});
+
+/* ---------------------------------------------
+   8. Woning invoeren + AI waardering
+--------------------------------------------- */
+document.getElementById("btn-calc").onclick = () => {
+  const s = Number(document.getElementById("input-size").value);
+  const r = Number(document.getElementById("input-rooms").value);
+  const l = document.getElementById("input-label").value;
+
+  if (!s) {
+    alert("Voer minimaal woonoppervlakte in!");
+    return;
+  }
+
+  // simpele energielabel-weging
+  const userM2 = Math.round(avgM2 * (l.startsWith("A") ? 1.03 : 0.97));
+  const estPrice = Math.round(s * userM2);
+
+  buildScatter({ x: s, y: estPrice });
+
+  document.getElementById("user-output").innerHTML = `
+    <p><strong>Geschatte waarde per m²:</strong> €${userM2.toLocaleString()}</p>
+    <p><strong>Geschatte woningwaarde:</strong> €${estPrice.toLocaleString()}</p>
+  `;
+
+  document.getElementById("ai-valuation").innerHTML = `
+    Op basis van marktdata en kenmerken van jouw woning verwachten wij een reële vraagprijs tussen 
+    <strong>€${(estPrice * 0.93).toLocaleString()}</strong> en 
+    <strong>€${(estPrice * 1.05).toLocaleString()}</strong>.
+  `;
+};
+</script>
+</body>
+</html>
