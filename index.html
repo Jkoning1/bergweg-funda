@@ -35,18 +35,35 @@
       <h2 class="text-xl font-semibold mb-4">🔍 Vergelijk jouw woning</h2>
 
       <!-- BASISGEGEVENS -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
 
+        <!-- Woningtype -->
+        <div>
+          <label class="input-label">Woningtype</label>
+          <select id="input-type" class="w-full p-2 border rounded">
+            <option value="appartement">Appartement</option>
+            <option value="benedenwoning">Benedenwoning</option>
+            <option value="bovenwoning">Bovenwoning</option>
+            <option value="tussenwoning" selected>Tussenwoning</option>
+            <option value="hoekwoning">Hoekwoning</option>
+            <option value="twee_onder_een_kap">2-onder-1-kap</option>
+            <option value="vrijstaand">Vrijstaand</option>
+          </select>
+        </div>
+
+        <!-- Woonoppervlakte -->
         <div>
           <label class="input-label">Woonoppervlakte (m²)</label>
           <input id="input-size" type="number" class="w-full p-2 border rounded" placeholder="Bijv. 85">
         </div>
 
+        <!-- Kamers -->
         <div>
           <label class="input-label">Aantal kamers</label>
           <input id="input-rooms" type="number" class="w-full p-2 border rounded" placeholder="Bijv. 3">
         </div>
 
+        <!-- Energielabel -->
         <div>
           <label class="input-label">Energielabel</label>
           <select id="input-label" class="w-full p-2 border rounded">
@@ -63,14 +80,15 @@
           </select>
         </div>
 
+        <!-- Vraagprijs optioneel -->
         <div>
-          <label class="input-label">(Optioneel) Verwachte vraagprijs</label>
+          <label class="input-label">(Optioneel) Vraagprijs</label>
           <input id="input-price" type="number" class="w-full p-2 border rounded" placeholder="Bijv. 395000">
         </div>
 
       </div>
 
-      <!-- GEAVANCEERDE FACTOREN – COLLAPSIBLE -->
+      <!-- GEAVANCEERDE FACTOREN -->
       <div class="mt-6 border-t pt-4">
 
         <button id="toggle-adv"
@@ -121,7 +139,7 @@
             </select>
           </div>
 
-          <!-- Erfpacht -->
+          <!-- Grondsituatie -->
           <div>
             <label class="input-label">Grondsituatie</label>
             <select id="input-lease" class="w-full p-2 border rounded">
@@ -160,107 +178,116 @@
         Analyseer woning
       </button>
 
-      <div id="user-output" class="mt-4 text-gray-800 text-sm"></div>
+      <div id="user-output" class="mt-6 text-gray-800 text-sm"></div>
+
+      <!-- RADAR CHART -->
+      <div class="mt-8">
+        <h3 class="text-lg font-semibold mb-3">📊 Factor Radar Chart</h3>
+        <canvas id="chart-radar" height="200"></canvas>
+      </div>
+
     </div>
 
     <!-- TABS -->
     <div class="bg-white shadow rounded">      
-      <div class="bg-white shadow rounded">
-        <div class="flex border-b flex-wrap">
+      <div class="flex border-b flex-wrap">
       
-          <button data-tab="overview" class="tab-btn px-6 py-3 border-b-2 border-blue-600 text-blue-600">
-            Overzicht
-          </button>
+        <button data-tab="overview" class="tab-btn px-6 py-3 border-b-2 border-blue-600 text-blue-600">
+          Overzicht
+        </button>
+
+        <button data-tab="prices" class="tab-btn px-6 py-3 text-gray-600">
+          Prijzen
+        </button>
+
+        <button data-tab="details" class="tab-btn px-6 py-3 text-gray-600">
+          Details
+        </button>
+
+        <button data-tab="heatmap" class="tab-btn px-6 py-3 text-gray-600">
+          Heatmap
+        </button>
+
+        <button data-tab="labels" class="tab-btn px-6 py-3 text-gray-600">
+          Energielabels
+        </button>
+
+        <button data-tab="trend" class="tab-btn px-6 py-3 text-gray-600">
+          Trend
+        </button>
       
-          <button data-tab="prices" class="tab-btn px-6 py-3 text-gray-600">
-            Prijzen
-          </button>
-      
-          <button data-tab="details" class="tab-btn px-6 py-3 text-gray-600">
-            Details
-          </button>
-      
-          <button data-tab="heatmap" class="tab-btn px-6 py-3 text-gray-600">
-            Heatmap
-          </button>
-      
-          <button data-tab="labels" class="tab-btn px-6 py-3 text-gray-600">
-            Energielabels
-          </button>
-      
-          <button data-tab="trend" class="tab-btn px-6 py-3 text-gray-600">
-            Trend
-          </button>
-      
+      </div>
+
+      <!-- TAB CONTENT -->
+      <div class="p-6">
+
+        <!-- OVERZICHT -->
+        <div id="tab-overview">
+          <h2 class="text-lg font-semibold mb-4">Verdeling prijs per m²</h2>
+          <canvas id="chart-m2ranges" height="120"></canvas>
         </div>
-      
-        <!-- TAB CONTENT -->
-        <div class="p-6">
-      
-          <!-- OVERZICHT -->
-          <div id="tab-overview">
-            <h2 class="text-lg font-semibold mb-4">Verdeling prijs per m²</h2>
-            <canvas id="chart-m2ranges" height="120"></canvas>
-          </div>
-      
-          <!-- PRIJZEN -->
-          <div id="tab-prices" class="hidden">
-            <h2 class="text-lg font-semibold mb-4">Prijs vs. woonoppervlakte</h2>
-            <canvas id="chart-scatter" height="140"></canvas>
-          </div>
-      
-          <!-- DETAILS -->
-          <div id="tab-details" class="hidden">
-            <h2 class="text-lg font-semibold mb-4">Detailoverzicht</h2>
-            <div class="overflow-x-auto">
-              <table class="min-w-full bg-white rounded shadow">
-                <thead class="bg-gray-100">
-                  <tr>
-                    <th class="px-4 py-2 text-left">Adres</th>
-                    <th class="px-4 py-2 text-left">Prijs</th>
-                    <th class="px-4 py-2 text-left">m²</th>
-                    <th class="px-4 py-2 text-left">€/m²</th>
-                    <th class="px-4 py-2 text-left">Status</th>
-                  </tr>
-                </thead>
-                <tbody id="table-body"></tbody>
-              </table>
-            </div>
-          </div>
-      
-          <!-- HEATMAP -->
-          <div id="tab-heatmap" class="hidden">
-            <h2 class="text-lg font-semibold mb-4">Heatmap: Prijs per m² per aantal kamers</h2>
-            <canvas id="chart-heatmap" height="200"></canvas>
-          </div>
-      
-          <!-- LABELS -->
-          <div id="tab-labels" class="hidden">
-            <h2 class="text-lg font-semibold mb-4">Gemiddelde prijs per m² per energielabel</h2>
-            <canvas id="chart-labels" height="120"></canvas>
-          </div>
-      
-          <!-- TREND -->
-          <div id="tab-trend" class="hidden">
-            <h2 class="text-lg font-semibold mb-4">Vraagprijs Trend (gesimuleerd)</h2>
-            <canvas id="chart-trend" height="120"></canvas>
-          </div>
-      
+
+        <!-- PRIJZEN -->
+        <div id="tab-prices" class="hidden">
+          <h2 class="text-lg font-semibold mb-4">Prijs vs. woonoppervlakte</h2>
+          <canvas id="chart-scatter" height="140"></canvas>
         </div>
+
+        <!-- DETAILS -->
+        <div id="tab-details" class="hidden">
+          <h2 class="text-lg font-semibold mb-4">Detailoverzicht</h2>
+          <div class="overflow-x-auto">
+            <table class="min-w-full bg-white rounded shadow">
+              <thead class="bg-gray-100">
+                <tr>
+                  <th class="px-4 py-2 text-left">Adres</th>
+                  <th class="px-4 py-2 text-left">Prijs</th>
+                  <th class="px-4 py-2 text-left">m²</th>
+                  <th class="px-4 py-2 text-left">€/m²</th>
+                  <th class="px-4 py-2 text-left">Status</th>
+                </tr>
+              </thead>
+              <tbody id="table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- HEATMAP -->
+        <div id="tab-heatmap" class="hidden">
+          <h2 class="text-lg font-semibold mb-4">Heatmap: Prijs per m² per aantal kamers</h2>
+          <canvas id="chart-heatmap" height="200"></canvas>
+        </div>
+
+        <!-- LABELS -->
+        <div id="tab-labels" class="hidden">
+          <h2 class="text-lg font-semibold mb-4">Gemiddelde prijs per m² per energielabel</h2>
+          <canvas id="chart-labels" height="120"></canvas>
+        </div>
+
+        <!-- TREND -->
+        <div id="tab-trend" class="hidden">
+          <h2 class="text-lg font-semibold mb-4">Vraagprijs Trend (gesimuleerd)</h2>
+          <canvas id="chart-trend" height="120"></canvas>
+        </div>
+
       </div>
+    </div>
+
+    <!-- INSIGHTS -->
+    <div class="bg-white rounded shadow mt-6 p-6">
+      <h3 class="text-lg font-semibold mb-4">📊 Belangrijkste inzichten</h3>
+      <ul id="insights" class="space-y-2 text-gray-700 text-sm"></ul>
+    </div>
       
-      <!-- INSIGHTS -->
-      <div class="bg-white rounded shadow mt-6 p-6">
-        <h3 class="text-lg font-semibold mb-4">📊 Belangrijkste inzichten</h3>
-        <ul id="insights" class="space-y-2 text-gray-700 text-sm"></ul>
-      </div>
-      
-      <!-- AI WAARDERING -->
-      <div class="bg-white rounded shadow mt-6 p-6">
-        <h3 class="text-lg font-semibold mb-4">🤖 Marktwaardeschatting</h3>
-        <p id="ai-valuation" class="text-gray-800 text-sm"></p>
-      </div>
-      
+    <!-- AI WAARDERING -->
+    <div class="bg-white rounded shadow mt-6 p-6">
+      <h3 class="text-lg font-semibold mb-4">🤖 Marktwaardeschatting</h3>
+      <p id="ai-valuation" class="text-gray-800 text-sm"></p>
+    </div>
+
+  </div>
+
+
 
 <script>
     /* ---------------------------------------------
