@@ -1,23 +1,15 @@
-import React, { useState } from "https://esm.sh/react@18";
-import {
+// React state
+const { useState } = React;
+
+// Recharts via UMD (window.Recharts)
+const {
   BarChart, Bar, ScatterChart, Scatter,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, PieChart, Pie, Cell
-} from "https://esm.sh/recharts@2.5.0";
+  XAxis, YAxis, CartesianGrid, Tooltip,
+  Legend, ResponsiveContainer, PieChart, Pie, Cell
+} = Recharts;
 
 const BergwegAnalysis = () => {
-
-    const { useState } = React;
-
-    // Recharts via CDN
-    const {
-      BarChart, Bar, LineChart, Line, ScatterChart, Scatter,
-      XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-      ResponsiveContainer, PieChart, Pie, Cell
-    } = Recharts;
-    
-    const BergwegAnalysis = () => {
-      const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("overview");
 
 // Data extracted from the Funda listings
 const properties = [
@@ -83,35 +75,31 @@ const properties = [
     { address: "Bergweg 55-C", price: 315000, size: 59, rooms: 2, label: "B", status: "Verkocht" }
   ];
 
-      const propertiesWithM2Price = properties
+  // -------------------------------------------------------------------
+  // BEREKINGEN
+  // -------------------------------------------------------------------
+  const propertiesWithM2Price = properties
     .filter(p => p.size > 0)
     .map(p => ({ ...p, pricePerM2: Math.round(p.price / p.size) }));
 
   const avgPricePerM2 = Math.round(
-    propertiesWithM2Price.reduce((sum, p) => sum + p.pricePerM2, 0) / propertiesWithM2Price.length
+    propertiesWithM2Price.reduce((s, p) => s + p.pricePerM2, 0) / propertiesWithM2Price.length
   );
 
   const avgPrice = Math.round(
-    propertiesWithM2Price.reduce((sum, p) => sum + p.price, 0) / propertiesWithM2Price.length
+    propertiesWithM2Price.reduce((s, p) => s + p.price, 0) / propertiesWithM2Price.length
   );
 
   const avgSize = Math.round(
-    propertiesWithM2Price.reduce((sum, p) => sum + p.size, 0) / propertiesWithM2Price.length
+    propertiesWithM2Price.reduce((s, p) => s + p.size, 0) / propertiesWithM2Price.length
   );
 
-  const statusData = [
-    { name: "Verkocht", value: properties.filter(p => p.status === "Verkocht").length },
-    { name: "Beschikbaar", value: properties.filter(p => p.status === "Beschikbaar").length },
-    { name: "Onder voorbehoud", value: properties.filter(p => p.status === "Onder voorbehoud").length },
-    { name: "Onder bod", value: properties.filter(p => p.status === "Onder bod").length }
-  ];
-
   const m2PriceRanges = [
-    { range: "€3.000–€4.000", count: 0, min: 3000, max: 4000 },
-    { range: "€4.000–€5.000", count: 0, min: 4000, max: 5000 },
-    { range: "€5.000–€6.000", count: 0, min: 5000, max: 6000 },
-    { range: "€6.000–€7.000", count: 0, min: 6000, max: 7000 },
-    { range: "€7.000+", count: 0, min: 7000, max: 20000 }
+    { range: "€3.000–€4.000", min: 3000, max: 4000, count: 0 },
+    { range: "€4.000–€5.000", min: 4000, max: 5000, count: 0 },
+    { range: "€5.000–€6.000", min: 5000, max: 6000, count: 0 },
+    { range: "€6.000–€7.000", min: 6000, max: 7000, count: 0 },
+    { range: "€7.000+", min: 7000, max: 20000, count: 0 }
   ];
 
   propertiesWithM2Price.forEach(p => {
@@ -119,47 +107,40 @@ const properties = [
     if (r) r.count++;
   });
 
-  const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
-
-  // ----------------------------------------------
-  // UI RENDER
-  // ----------------------------------------------
+  // -------------------------------------------------------------------
+  // RENDER
+  // -------------------------------------------------------------------
   return (
     <div className="w-full max-w-6xl mx-auto p-6 bg-gray-50">
-      {/* Titel */}
-      <div className="bg-white p-6 rounded shadow mb-6">
+      <div className="bg-white p-6 shadow rounded mb-6">
         <h1 className="text-3xl font-bold">Woningmarkt Analyse: Bergweg Rotterdam</h1>
-        <p className="text-gray-600 mt-1">
-          Analyse van {properties.length} woningen
-        </p>
+        <p className="text-gray-600">Analyse van {properties.length} woningen</p>
       </div>
 
-      {/* KPI's */}
+      {/* KPI’s */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white p-6 shadow rounded">
-          <p className="text-sm text-gray-600">Gem. € / m²</p>
+          <p className="text-sm text-gray-600">Gemiddelde prijs/m²</p>
           <p className="text-2xl font-bold text-blue-600">€{avgPricePerM2.toLocaleString()}</p>
         </div>
         <div className="bg-white p-6 shadow rounded">
-          <p className="text-sm text-gray-600">Gem. Prijs</p>
+          <p className="text-sm text-gray-600">Gemiddelde prijs</p>
           <p className="text-2xl font-bold text-green-600">€{avgPrice.toLocaleString()}</p>
         </div>
         <div className="bg-white p-6 shadow rounded">
-          <p className="text-sm text-gray-600">Gem. Oppervlakte</p>
+          <p className="text-sm text-gray-600">Gemiddelde oppervlakte</p>
           <p className="text-2xl font-bold text-purple-600">{avgSize} m²</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded shadow">
+      <div className="bg-white shadow rounded">
         <div className="flex border-b">
           {["overview", "prices", "details"].map(tab => (
             <button
               key={tab}
               className={`px-6 py-3 ${
-                activeTab === tab
-                  ? "text-blue-600 border-b-2 border-blue-500"
-                  : "text-gray-600"
+                activeTab === tab ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"
               }`}
               onClick={() => setActiveTab(tab)}
             >
@@ -171,7 +152,6 @@ const properties = [
         </div>
 
         <div className="p-6">
-          {/* === OVERZICHT === */}
           {activeTab === "overview" && (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={m2PriceRanges}>
@@ -184,28 +164,26 @@ const properties = [
             </ResponsiveContainer>
           )}
 
-          {/* === PRIJZEN === */}
           {activeTab === "prices" && (
             <ResponsiveContainer width="100%" height={350}>
               <ScatterChart>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="size" name="m²" />
-                <YAxis dataKey="price" name="Prijs" />
+                <XAxis dataKey="size" />
+                <YAxis dataKey="price" />
                 <Tooltip />
                 <Scatter data={propertiesWithM2Price} fill="#8884d8" />
               </ScatterChart>
             </ResponsiveContainer>
           )}
 
-          {/* === DETAILS === */}
           {activeTab === "details" && (
-            <table className="min-w-full bg-white shadow rounded overflow-hidden">
+            <table className="min-w-full bg-white rounded shadow">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="px-4 py-2 text-left">Adres</th>
-                  <th className="px-4 py-2 text-left">Prijs</th>
-                  <th className="px-4 py-2 text-left">m²</th>
-                  <th className="px-4 py-2 text-left">€/m²</th>
+                  <th className="px-4 py-2">Adres</th>
+                  <th className="px-4 py-2">Prijs</th>
+                  <th className="px-4 py-2">m²</th>
+                  <th className="px-4 py-2">€/m²</th>
                 </tr>
               </thead>
               <tbody>
@@ -214,9 +192,7 @@ const properties = [
                     <td className="px-4 py-2">{p.address}</td>
                     <td className="px-4 py-2">€{p.price.toLocaleString()}</td>
                     <td className="px-4 py-2">{p.size}</td>
-                    <td className="px-4 py-2 text-blue-600 font-bold">
-                      €{p.pricePerM2.toLocaleString()}
-                    </td>
+                    <td className="px-4 py-2 text-blue-600 font-bold">€{p.pricePerM2.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -228,8 +204,7 @@ const properties = [
   );
 };
 
-// Mount React App
-ReactDOM.createRoot(document.getElementById("root")).render(<BergwegAnalysis />);
-};
+// ✔️ Function is now properly closed
 
-export default BergwegAnalysis;
+// Mount React
+ReactDOM.createRoot(document.getElementById("root")).render(<BergwegAnalysis />);
