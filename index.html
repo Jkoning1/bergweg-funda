@@ -20,13 +20,14 @@
     <div id="root"></div>
 
     <script>
+      
+        // IMPORTANT: FIX — use window.Recharts (not Recharts)
         const {
             BarChart, Bar, ScatterChart, Scatter,
             XAxis, YAxis, CartesianGrid, Tooltip, Legend,
             ResponsiveContainer, PieChart, Pie, Cell
-        } = Recharts;
+        } = window.Recharts;
 
-        // React Component in pure JS
         function BergwegAnalysis() {
             const [activeTab, setActiveTab] = React.useState("overview");
 
