@@ -1,23 +1,35 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Woningmarkt Analyse Bergweg Rotterdam</title>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/recharts@2.5.0/dist/Recharts.js"></script>
+
+    <!-- React UMD -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <!-- Recharts UMD -->
+    <script src="https://unpkg.com/recharts/umd/Recharts.min.js"></script>
+
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <div id="root"></div>
-    
-    <script type="text/babel">
-        const { BarChart, Bar, LineChart, Line, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
 
-        const BergwegAnalysis = () => {
-          const [activeTab, setActiveTab] = React.useState('overview');
+<body class="bg-gray-100">
+    <div id="root"></div>
+
+    <script>
+        const {
+            BarChart, Bar, ScatterChart, Scatter,
+            XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+            ResponsiveContainer, PieChart, Pie, Cell
+        } = Recharts;
+
+        // React Component in pure JS
+        function BergwegAnalysis() {
+            const [activeTab, setActiveTab] = React.useState("overview");
+
 
           const properties = [
             { address: "Bergweg 365-A03", price: 425000, size: 102, rooms: 2, label: "C", status: "Beschikbaar" },
@@ -82,307 +94,184 @@
             { address: "Bergweg 55-C", price: 315000, size: 59, rooms: 2, label: "B", status: "Verkocht" }
           ];
 
-          const propertiesWithM2Price = properties
-            .filter(p => p.address !== "Bergweg 219")
-            .map(p => ({
-              ...p,
-              pricePerM2: Math.round(p.price / p.size)
-            }));
+                      // Filtering + prijs/m² berekening
+                      const filtered = properties
+                .filter(p => p.price < 1000000)
+                .map(p => ({
+                    ...p,
+                    pricePerM2: Math.round(p.price / p.size)
+                }));
 
-          const avgPricePerM2 = Math.round(
-            propertiesWithM2Price.reduce((sum, p) => sum + p.pricePerM2, 0) / propertiesWithM2Price.length
-          );
-          
-          const avgPrice = Math.round(
-            propertiesWithM2Price.reduce((sum, p) => sum + p.price, 0) / propertiesWithM2Price.length
-          );
+            const avgPricePerM2 = Math.round(
+                filtered.reduce((sum, p) => sum + p.pricePerM2, 0) / filtered.length
+            );
 
-          const avgSize = Math.round(
-            propertiesWithM2Price.reduce((sum, p) => sum + p.size, 0) / propertiesWithM2Price.length
-          );
+            const avgSize = Math.round(
+                filtered.reduce((sum, p) => sum + p.size, 0) / filtered.length
+            );
 
-          const m2PriceRanges = [
-            { range: "€3.000-€4.000", count: 0, min: 3000, max: 4000 },
-            { range: "€4.000-€5.000", count: 0, min: 4000, max: 5000 },
-            { range: "€5.000-€6.000", count: 0, min: 5000, max: 6000 },
-            { range: "€6.000-€7.000", count: 0, min: 6000, max: 7000 },
-            { range: "€7.000+", count: 0, min: 7000, max: 10000 }
-          ];
+            const avgPrice = Math.round(
+                filtered.reduce((sum, p) => sum + p.price, 0) / filtered.length
+            );
 
-          propertiesWithM2Price.forEach(p => {
-            const range = m2PriceRanges.find(r => p.pricePerM2 >= r.min && p.pricePerM2 < r.max);
-            if (range) range.count++;
-          });
+            const m2ranges = [
+                { range: "€3.000 - €4.500", min: 3000, max: 4500, count: 0 },
+                { range: "€4.500 - €5.500", min: 4500, max: 5500, count: 0 },
+                { range: "€5.500 - €6.500", min: 5500, max: 6500, count: 0 },
+                { range: "€6.500 - €7.500", min: 6500, max: 7500, count: 0 },
+                { range: "> 7500", min: 7500, max: 20000, count: 0 },
+            ];
 
-          const statusData = [
-            { name: 'Verkocht', value: properties.filter(p => p.status === 'Verkocht').length },
-            { name: 'Beschikbaar', value: properties.filter(p => p.status === 'Beschikbaar').length },
-            { name: 'Onder voorbehoud', value: properties.filter(p => p.status === 'Onder voorbehoud').length },
-            { name: 'Onder bod', value: properties.filter(p => p.status === 'Onder bod').length }
-          ];
+            filtered.forEach(p => {
+                const r = m2ranges.find(x => p.pricePerM2 >= x.min && p.pricePerM2 < x.max);
+                if (r) r.count++;
+            });
 
-          const labelCount = {};
-          propertiesWithM2Price.forEach(p => {
-            if (p.label && p.label !== '?') {
-              labelCount[p.label] = (labelCount[p.label] || 0) + 1;
-            }
-          });
-          
-          const labelData = Object.entries(labelCount)
-            .map(([label, count]) => ({ label, count }))
-            .sort((a, b) => b.count - a.count);
+            return React.createElement("div", { className: "max-w-6xl mx-auto p-6" }, [
 
-          const sizeCategories = [
-            { category: "< 70 m²", count: 0, min: 0, max: 70 },
-            { category: "70-100 m²", count: 0, min: 70, max: 100 },
-            { category: "100-130 m²", count: 0, min: 100, max: 130 },
-            { category: "130-160 m²", count: 0, min: 130, max: 160 },
-            { category: "> 160 m²", count: 0, min: 160, max: 500 }
-          ];
+                // Titel
+                React.createElement("div", { className: "bg-white shadow p-6 rounded mb-6" }, [
+                    React.createElement("h1", { className: "text-3xl font-bold mb-2" }, "Analyse Bergweg, Rotterdam"),
+                    React.createElement("p", { className: "text-gray-600" }, "Volledige woningmarkt analyse op basis van Funda-data.")
+                ]),
 
-          propertiesWithM2Price.forEach(p => {
-            const cat = sizeCategories.find(c => p.size >= c.min && p.size < c.max);
-            if (cat) cat.count++;
-          });
+                // KPIs
+                React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" }, [
+                    metric("Gemiddelde prijs/m²", "€" + avgPricePerM2.toLocaleString(), "text-blue-600"),
+                    metric("Gemiddelde vraagprijs", "€" + avgPrice.toLocaleString(), "text-green-600"),
+                    metric("Gemiddelde oppervlakte", avgSize + " m²", "text-purple-600"),
+                ]),
 
-          const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+                // Tabs
+                React.createElement("div", { className: "flex gap-4 mb-6" }, [
+                    tabButton("overview", activeTab, setActiveTab, "Overzicht"),
+                    tabButton("distribution", activeTab, setActiveTab, "Prijs Distributie"),
+                    tabButton("scatter", activeTab, setActiveTab, "Prijs vs m²"),
+                    tabButton("details", activeTab, setActiveTab, "Details"),
+                ]),
 
-          return (
-            <div className="w-full max-w-7xl mx-auto p-6 bg-gray-50">
-              <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-                <h1 className="text-3xl font-bold text-gray-800 mb-2">Woningmarkt Analyse: Bergweg, Rotterdam</h1>
-                <p className="text-gray-600">Analyse van {properties.length} woningen op de Bergweg</p>
-              </div>
+                // CONTENT SWITCH
+                activeTab === "overview" && overviewSection(m2ranges),
+                activeTab === "distribution" && distributionSection(m2ranges),
+                activeTab === "scatter" && scatterSection(filtered),
+                activeTab === "details" && detailsSection(filtered)
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white rounded-lg shadow p-6">
-                  <div className="text-sm text-gray-600 mb-1">Gemiddelde prijs/m²</div>
-                  <div className="text-2xl font-bold text-blue-600">€{avgPricePerM2.toLocaleString()}</div>
-                </div>
-                <div className="bg-white rounded-lg shadow p-6">
-                  <div className="text-sm text-gray-600 mb-1">Gemiddelde vraagprijs</div>
-                  <div className="text-2xl font-bold text-green-600">€{avgPrice.toLocaleString()}</div>
-                </div>
-                <div className="bg-white rounded-lg shadow p-6">
-                  <div className="text-sm text-gray-600 mb-1">Gemiddelde oppervlakte</div>
-                  <div className="text-2xl font-bold text-purple-600">{avgSize} m²</div>
-                </div>
-                <div className="bg-white rounded-lg shadow p-6">
-                  <div className="text-sm text-gray-600 mb-1">Totaal woningen</div>
-                  <div className="text-2xl font-bold text-orange-600">{properties.length}</div>
-                </div>
-              </div>
+            ]);
+        }
 
-              <div className="bg-white rounded-lg shadow-lg mb-6">
-                <div className="flex border-b">
-                  <button
-                    onClick={() => setActiveTab('overview')}
-                    className={`px-6 py-3 font-medium ${activeTab === 'overview' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-600'}`}
-                  >
-                    Overzicht
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('prices')}
-                    className={`px-6 py-3 font-medium ${activeTab === 'prices' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-600'}`}
-                  >
-                    Prijzen
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('details')}
-                    className={`px-6 py-3 font-medium ${activeTab === 'details' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-600'}`}
-                  >
-                    Details
-                  </button>
-                </div>
+        // ---- UI HELPERS ----
+        function metric(label, value, color) {
+            return React.createElement("div", { className: "bg-white p-6 shadow rounded" }, [
+                React.createElement("div", { className: "text-sm text-gray-600" }, label),
+                React.createElement("div", { className: "text-2xl font-bold " + color }, value)
+            ]);
+        }
 
-                <div className="p-6">
-                  {activeTab === 'overview' && (
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div>
-                          <h3 className="text-lg font-semibold mb-4">Prijs per m² verdeling</h3>
-                          <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={m2PriceRanges}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="range" angle={-45} textAnchor="end" height={80} />
-                              <YAxis />
-                              <Tooltip />
-                              <Bar dataKey="count" fill="#0088FE" />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
+        function tabButton(id, activeTab, setActiveTab, label) {
+            return React.createElement("button", {
+                onClick: () => setActiveTab(id),
+                className:
+                    "px-4 py-2 rounded " +
+                    (activeTab === id
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-200 text-gray-700")
+            }, label);
+        }
 
-                        <div>
-                          <h3 className="text-lg font-semibold mb-4">Status verdeling</h3>
-                          <ResponsiveContainer width="100%" height={300}>
-                            <PieChart>
-                              <Pie
-                                data={statusData}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                label={({ name, value }) => `${name}: ${value}`}
-                                outerRadius={80}
-                                fill="#8884d8"
-                                dataKey="value"
-                              >
-                                {statusData.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                              </Pie>
-                              <Tooltip />
-                            </PieChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
+        // ---- SECTIONS ----
 
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div>
-                          <h3 className="text-lg font-semibold mb-4">Energielabels</h3>
-                          <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={labelData}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="label" />
-                              <YAxis />
-                              <Tooltip />
-                              <Bar dataKey="count" fill="#00C49F" />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
+        function overviewSection(m2ranges) {
+            return React.createElement("div", null, [
+                React.createElement("h2", { className: "text-xl font-semibold mb-4" }, "Prijs/m² verdeling"),
 
-                        <div>
-                          <h3 className="text-lg font-semibold mb-4">Grootte categorieën</h3>
-                          <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={sizeCategories}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="category" />
-                              <YAxis />
-                              <Tooltip />
-                              <Bar dataKey="count" fill="#FFBB28" />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                React.createElement("div", { className: "bg-white p-4 shadow rounded" },
+                    React.createElement(ResponsiveContainer, { width: "100%", height: 300 },
+                        React.createElement(BarChart, { data: m2ranges }, [
+                            React.createElement(CartesianGrid, { strokeDasharray: "3 3" }),
+                            React.createElement(XAxis, { dataKey: "range" }),
+                            React.createElement(YAxis, null),
+                            React.createElement(Tooltip, null),
+                            React.createElement(Bar, { dataKey: "count", fill: "#3b82f6" })
+                        ])
+                    )
+                )
+            ]);
+        }
 
-                  {activeTab === 'prices' && (
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-lg font-semibold mb-4">Prijs vs. Oppervlakte</h3>
-                        <ResponsiveContainer width="100%" height={400}>
-                          <ScatterChart>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="size" name="Oppervlakte" unit=" m²" />
-                            <YAxis dataKey="price" name="Prijs" tickFormatter={(value) => `€${(value/1000).toFixed(0)}k`} />
-                            <Tooltip 
-                              formatter={(value, name) => {
-                                if (name === 'Prijs') return `€${value.toLocaleString()}`;
-                                return value;
-                              }}
-                              labelFormatter={(value) => `${value} m²`}
-                            />
-                            <Legend />
-                            <Scatter name="Woningen" data={propertiesWithM2Price} fill="#8884d8" />
-                          </ScatterChart>
-                        </ResponsiveContainer>
-                      </div>
+        function distributionSection(m2ranges) {
+            return overviewSection(m2ranges);
+        }
 
-                      <div>
-                        <h3 className="text-lg font-semibold mb-4">Prijs per m² per woning (top 20)</h3>
-                        <ResponsiveContainer width="100%" height={400}>
-                          <BarChart 
-                            data={[...propertiesWithM2Price]
-                              .sort((a, b) => b.pricePerM2 - a.pricePerM2)
-                              .slice(0, 20)}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="address" angle={-90} textAnchor="end" height={150} interval={0} tick={{ fontSize: 10 }} />
-                            <YAxis tickFormatter={(value) => `€${(value/1000).toFixed(1)}k`} />
-                            <Tooltip formatter={(value) => `€${value.toLocaleString()}/m²`} />
-                            <Bar dataKey="pricePerM2" fill="#FF8042" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  )}
+        function scatterSection(filtered) {
+            return React.createElement("div", null, [
 
-                  {activeTab === 'details' && (
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold mb-4">Detailoverzicht alle woningen</h3>
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Adres</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prijs</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">m²</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">€/m²</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kamers</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Label</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {propertiesWithM2Price
-                              .sort((a, b) => b.pricePerM2 - a.pricePerM2)
-                              .map((prop, idx) => (
-                              <tr key={idx} className="hover:bg-gray-50">
-                                <td className="px-4 py-3 text-sm text-gray-900">{prop.address}</td>
-                                <td className="px-4 py-3 text-sm text-gray-900">€{prop.price.toLocaleString()}</td>
-                                <td className="px-4 py-3 text-sm text-gray-900">{prop.size}</td>
-                                <td className="px-4 py-3 text-sm font-semibold text-blue-600">€{prop.pricePerM2.toLocaleString()}</td>
-                                <td className="px-4 py-3 text-sm text-gray-900">{prop.rooms}</td>
-                                <td className="px-4 py-3 text-sm text-gray-900">{prop.label}</td>
-                                <td className="px-4 py-3 text-sm">
-                                  <span className={`px-2 py-1 rounded-full text-xs ${
-                                    prop.status === 'Verkocht' ? 'bg-red-100 text-red-800' :
-                                    prop.status === 'Beschikbaar' ? 'bg-green-100 text-green-800' :
-                                    'bg-yellow-100 text-yellow-800'
-                                  }`}>
-                                    {prop.status}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+                React.createElement("h2", { className: "text-xl font-semibold mb-4" }, "Prijs vs Woonoppervlakte"),
 
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <h3 className="text-lg font-semibold mb-4">Belangrijkste inzichten</h3>
-                <ul className="space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <span className="text-blue-500 mr-2">•</span>
-                    <span>De gemiddelde prijs per m² op de Bergweg is <strong>€{avgPricePerM2.toLocaleString()}</strong></span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-500 mr-2">•</span>
-                    <span>Van de {properties.length} woningen zijn er {statusData[0].value} verkocht ({Math.round(statusData[0].value/properties.length*100)}%)</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-500 mr-2">•</span>
-                    <span>De hoogste prijs per m² is €{Math.max(...propertiesWithM2Price.map(p => p.pricePerM2)).toLocaleString()}</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-500 mr-2">•</span>
-                    <span>De laagste prijs per m² is €{Math.min(...propertiesWithM2Price.map(p => p.pricePerM2)).toLocaleString()}</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-500 mr-2">•</span>
-                    <span>Woningen met energielabel A of hoger: {properties.filter(p => p.label.startsWith('A')).length} van {properties.length} ({Math.round(properties.filter(p => p.label.startsWith('A')).length/properties.length*100)}%)</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          );
-        };
+                React.createElement("div", { className: "bg-white p-4 shadow rounded" },
+                    React.createElement(ResponsiveContainer, { width: "100%", height: 350 },
+                        React.createElement(ScatterChart, null, [
+                            React.createElement(CartesianGrid, null),
+                            React.createElement(XAxis, { dataKey: "size", name: "m²", unit: "m²" }),
+                            React.createElement(YAxis, { dataKey: "price", name: "Prijs", unit: "€" }),
+                            React.createElement(Tooltip, null),
+                            React.createElement(Scatter, { data: filtered, fill: "#f59e0b" })
+                        ])
+                    )
+                )
+            ]);
+        }
 
-        ReactDOM.render(<BergwegAnalysis />, document.getElementById('root'));
+        function detailsSection(filtered) {
+            return React.createElement("div", null, [
+
+                React.createElement("h2", { className: "text-xl font-semibold mb-4" }, "Alle woningen"),
+
+                React.createElement("div", { className: "overflow-x-auto" },
+                    React.createElement("table", { className: "min-w-full bg-white shadow rounded" }, [
+
+                        React.createElement("thead", { className: "bg-gray-100" },
+                            React.createElement("tr", null, [
+                                th("Adres"), th("Prijs"), th("m²"), th("€/m²"), th("Kamers"), th("Label"), th("Status")
+                            ])
+                        ),
+
+                        React.createElement("tbody", null,
+                            filtered.map((p, i) =>
+                                React.createElement("tr", { key: i, className: "border-b hover:bg-gray-50" }, [
+                                    td(p.address),
+                                    td("€" + p.price.toLocaleString()),
+                                    td(p.size),
+                                    td("€" + p.pricePerM2),
+                                    td(p.rooms),
+                                    td(p.label),
+                                    td(p.status),
+                                ])
+                            )
+                        )
+
+                    ])
+                )
+            ]);
+        }
+
+        function th(label) {
+            return React.createElement("th",
+                { className: "px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase" },
+                label
+            );
+        }
+
+        function td(content) {
+            return React.createElement("td",
+                { className: "px-4 py-2 text-sm text-gray-800" },
+                content
+            );
+        }
+
+        // ---- Mount Component ----
+        const root = ReactDOM.createRoot(document.getElementById("root"));
+        root.render(React.createElement(BergwegAnalysis));
     </script>
+
 </body>
 </html>
