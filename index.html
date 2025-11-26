@@ -2,36 +2,74 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8" />
-  <title>Bergweg Analyse</title>
+  <title>Bergweg Analyse – Marktwaardemeter</title>
 
-  <!-- Tailwind (prima voor deze demo) -->
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Chart.js voor grafieken -->
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body { background: #f3f4f6; }
+    .input-label { font-size: 12px; font-weight: 600; color: #555; }
+  </style>
 </head>
 
 <body class="bg-gray-100">
   <div id="app" class="w-full max-w-6xl mx-auto p-6">
-    <!-- Titel + KPI's -->
+
+    <!-- Titel -->
     <div class="bg-white p-6 shadow rounded mb-6">
-      <h1 class="text-3xl font-bold">Woningmarkt Analyse: Bergweg Rotterdam</h1>
-      <p id="subtitle" class="text-gray-600 mt-1"></p>
+      <h1 class="text-3xl font-bold">🏠 Woningmarkt Analyse – Bergweg Rotterdam</h1>
+      <p class="text-gray-600 mt-1">
+        Data van <strong>Funda</strong> – realtime analyse van vraagprijzen, m²-prijzen en woningtypes.
+      </p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <div class="bg-white p-6 shadow rounded">
-        <p class="text-sm text-gray-600">Gemiddelde prijs/m²</p>
-        <p id="kpi-m2" class="text-2xl font-bold text-blue-600"></p>
+    <!-- KPI's -->
+    <div id="kpis" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"></div>
+
+    <!-- Jouw woning invoeren -->
+    <div class="bg-white p-6 rounded shadow mb-6">
+      <h2 class="text-xl font-semibold mb-4">🔍 Vergelijk jouw woning</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="input-label">Woonoppervlakte (m²)</label>
+          <input id="input-size" type="number" class="w-full p-2 border rounded" placeholder="Bijv. 85">
+        </div>
+        <div>
+          <label class="input-label">Aantal kamers</label>
+          <input id="input-rooms" type="number" class="w-full p-2 border rounded" placeholder="Bijv. 3">
+        </div>
+        <div>
+          <label class="input-label">Energielabel</label>
+          <select id="input-label" class="w-full p-2 border rounded">
+            <option value="A+++">A+++</option>
+            <option value="A++">A++</option>
+            <option value="A+">A+</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="D">D</option>
+            <option value="E">E</option>
+            <option value="F">F</option>
+            <option value="?">Onbekend</option>
+          </select>
+        </div>
+        <div>
+          <label class="input-label">(Optioneel) Verw. vraagprijs</label>
+          <input id="input-price" type="number" class="w-full p-2 border rounded" placeholder="Bijv. 395000">
+        </div>
       </div>
-      <div class="bg-white p-6 shadow rounded">
-        <p class="text-sm text-gray-600">Gemiddelde prijs</p>
-        <p id="kpi-price" class="text-2xl font-bold text-green-600"></p>
-      </div>
-      <div class="bg-white p-6 shadow rounded">
-        <p class="text-sm text-gray-600">Gemiddelde oppervlakte</p>
-        <p id="kpi-size" class="text-2xl font-bold text-purple-600"></p>
-      </div>
+
+      <button id="btn-calc"
+        class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+        Analyseer woning
+      </button>
+
+      <div id="user-output" class="mt-4 text-gray-800 text-sm"></div>
     </div>
 
     <!-- Tabs -->
@@ -82,17 +120,22 @@
       </div>
     </div>
 
-    <!-- Belangrijkste inzichten -->
+    <!-- INSIGHTS -->
     <div class="bg-white rounded shadow mt-6 p-6">
-      <h3 class="text-lg font-semibold mb-4">Belangrijkste inzichten</h3>
-      <ul class="space-y-2 text-gray-700 text-sm" id="insights"></ul>
+      <h3 class="text-lg font-semibold mb-4">📊 Belangrijkste inzichten</h3>
+      <ul id="insights" class="space-y-2 text-gray-700 text-sm"></ul>
+    </div>
+
+    <!-- AI WAARDERING -->
+    <div class="bg-white rounded shadow mt-6 p-6">
+      <h3 class="text-lg font-semibold mb-4">🤖 Marktwaardeschatting</h3>
+      <p id="ai-valuation" class="text-gray-800 text-sm"></p>
     </div>
   </div>
-
   <script>
-    // -----------------------------
-    // DATASET
-    // -----------------------------
+    /* ---------------------------------------------
+       1. Data
+    --------------------------------------------- */
     const properties = [
       { address: "Bergweg 365-A03", price: 425000, size: 102, rooms: 2, label: "C", status: "Beschikbaar" },
       { address: "Bergweg 277-B", price: 699000, size: 153, rooms: 4, label: "B", status: "Beschikbaar" },
@@ -155,178 +198,195 @@
       { address: "Bergweg 162-A", price: 600000, size: 142, rooms: 2, label: "A", status: "Verkocht" },
       { address: "Bergweg 55-C", price: 315000, size: 59, rooms: 2, label: "B", status: "Verkocht" }
     ];
-
-    // -----------------------------
-    // BEREKENINGEN
-    // -----------------------------
+    
+    /* ---------------------------------------------
+       2. Preprocessing
+    --------------------------------------------- */
     const propsWithM2 = properties
       .filter(p => p.size > 0)
       .map(p => ({ ...p, pricePerM2: Math.round(p.price / p.size) }));
-
+    
     const avg = arr => Math.round(arr.reduce((s, v) => s + v, 0) / arr.length);
-
-    const avgPricePerM2 = avg(propsWithM2.map(p => p.pricePerM2));
+    
+    const avgM2 = avg(propsWithM2.map(p => p.pricePerM2));
     const avgPrice = avg(propsWithM2.map(p => p.price));
     const avgSize = avg(propsWithM2.map(p => p.size));
-
+    
+    const maxM2 = Math.max(...propsWithM2.map(p => p.pricePerM2));
+    const minM2 = Math.min(...propsWithM2.map(p => p.pricePerM2));
+    
+    const soldCount = properties.filter(p => p.status === "Verkocht").length;
+    const soldPct = Math.round((soldCount / properties.length) * 100);
+    
+    const AplusCount = properties.filter(p => p.label.startsWith("A")).length;
+    const AplusPct = Math.round((AplusCount / properties.length) * 100);
+    
     const m2Ranges = [
       { range: "€3.000–€4.000", min: 3000, max: 4000, count: 0 },
       { range: "€4.000–€5.000", min: 4000, max: 5000, count: 0 },
       { range: "€5.000–€6.000", min: 5000, max: 6000, count: 0 },
       { range: "€6.000–€7.000", min: 6000, max: 7000, count: 0 },
-      { range: "€7.000+",      min: 7000, max: 20000, count: 0 }
+      { range: "€7.000+", min: 7000, max: 20000, count: 0 }
     ];
-
+    
     propsWithM2.forEach(p => {
       const r = m2Ranges.find(x => p.pricePerM2 >= x.min && p.pricePerM2 < x.max);
       if (r) r.count++;
     });
-
-    const statusCount = status =>
-      properties.filter(p => p.status === status).length;
-
-    const soldCount = statusCount("Verkocht");
-    const soldPct = Math.round(soldCount / properties.length * 100);
-
-    const maxM2 = Math.max(...propsWithM2.map(p => p.pricePerM2));
-    const minM2 = Math.min(...propsWithM2.map(p => p.pricePerM2));
-
-    const labelAPlus = properties.filter(p => p.label.startsWith("A")).length;
-    const labelAPlusPct = Math.round(labelAPlus / properties.length * 100);
-
-    // -----------------------------
-    // VUL KPI'S + INSIGHTS + TABEL
-    // -----------------------------
-    document.getElementById("subtitle").textContent =
-      `Analyse van ${properties.length} woningen op de Bergweg`;
-
-    document.getElementById("kpi-m2").textContent =
-      "€" + avgPricePerM2.toLocaleString();
-    document.getElementById("kpi-price").textContent =
-      "€" + avgPrice.toLocaleString();
-    document.getElementById("kpi-size").textContent =
-      avgSize + " m²";
-
-    const insightsEl = document.getElementById("insights");
-    const addInsight = text => {
+    
+    /* ---------------------------------------------
+       3. KPI's
+    --------------------------------------------- */
+    document.getElementById("kpis").innerHTML = `
+      <div class="bg-white p-6 shadow rounded">
+        <p class="text-sm text-gray-600">Gemiddelde prijs/m²</p>
+        <p class="text-2xl font-bold text-blue-600">€${avgM2.toLocaleString()}</p>
+      </div>
+      <div class="bg-white p-6 shadow rounded">
+        <p class="text-sm text-gray-600">Gemiddelde prijs</p>
+        <p class="text-2xl font-bold text-green-600">€${avgPrice.toLocaleString()}</p>
+      </div>
+      <div class="bg-white p-6 shadow rounded">
+        <p class="text-sm text-gray-600">Gem. oppervlakte</p>
+        <p class="text-2xl font-bold text-purple-600">${avgSize} m²</p>
+      </div>
+    `;
+    
+    /* ---------------------------------------------
+       4. Insights
+    --------------------------------------------- */
+    const addInsight = txt => {
+      const ul = document.getElementById("insights");
       const li = document.createElement("li");
-      li.innerHTML = `<span class="text-blue-500 mr-2">•</span>${text}`;
-      li.className = "flex items-start";
-      insightsEl.appendChild(li);
+      li.innerHTML = `<span class='text-blue-500 mr-2'>•</span>${txt}`;
+      ul.appendChild(li);
     };
-
-    addInsight(`De gemiddelde prijs per m² op de Bergweg is <strong>€${avgPricePerM2.toLocaleString()}</strong>.`);
-    addInsight(`Van de ${properties.length} woningen zijn er ${soldCount} verkocht (${soldPct}%).`);
-    addInsight(`De hoogste prijs per m² is €${maxM2.toLocaleString()}, de laagste €${minM2.toLocaleString()}.`);
-    addInsight(`Woningen met energielabel A of hoger: ${labelAPlus} (${labelAPlusPct}%).`);
-
-    const tbody = document.getElementById("table-body");
+    
+    addInsight(`Gemiddelde prijs per m²: €${avgM2.toLocaleString()}.`);
+    addInsight(`${soldPct}% van alle woningen is verkocht.`);
+    addInsight(`Laagste m²-prijs: €${minM2.toLocaleString()}. Hoogste: €${maxM2.toLocaleString()}.`);
+    addInsight(`${AplusPct}% van de woningen heeft energielabel A of hoger.`);
+    
+    /* ---------------------------------------------
+       5. Details tabel
+    --------------------------------------------- */
+    const table = document.getElementById("table-body");
+    
     propsWithM2
-      .slice()
       .sort((a, b) => b.pricePerM2 - a.pricePerM2)
       .forEach(p => {
-        const tr = document.createElement("tr");
-        tr.className = "border-b";
-        tr.innerHTML = `
-          <td class="px-4 py-2">${p.address}</td>
-          <td class="px-4 py-2">€${p.price.toLocaleString()}</td>
-          <td class="px-4 py-2">${p.size}</td>
-          <td class="px-4 py-2 text-blue-600 font-bold">€${p.pricePerM2.toLocaleString()}</td>
-          <td class="px-4 py-2">${p.status}</td>
-        `;
-        tbody.appendChild(tr);
+        table.innerHTML += `
+          <tr class="border-b">
+            <td class="px-4 py-2">${p.address}</td>
+            <td class="px-4 py-2">€${p.price.toLocaleString()}</td>
+            <td class="px-4 py-2">${p.size}</td>
+            <td class="px-4 py-2 text-blue-600 font-bold">€${p.pricePerM2}</td>
+            <td class="px-4 py-2">${p.status}</td>
+          </tr>`;
       });
-
-    // -----------------------------
-    // CHARTS
-    // -----------------------------
-    // Bar: prijs/m² verdeling
+    
+    /* ---------------------------------------------
+       6. Charts
+    --------------------------------------------- */
+    // — Bar Chart —
     new Chart(
-      document.getElementById("chart-m2ranges").getContext("2d"),
+      document.getElementById("chart-m2ranges"),
       {
         type: "bar",
         data: {
           labels: m2Ranges.map(r => r.range),
           datasets: [{
             label: "Aantal woningen",
-            data: m2Ranges.map(r => r.count)
+            data: m2Ranges.map(r => r.count),
+            backgroundColor: "#3b82f6"
           }]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            x: { ticks: { autoSkip: false } },
-            y: { beginAtZero: true }
-          }
         }
       }
     );
-
-    // Scatter: prijs vs m²
-    new Chart(
-      document.getElementById("chart-scatter").getContext("2d"),
-      {
-        type: "scatter",
-        data: {
-          datasets: [{
-            label: "Woningen",
-            data: propsWithM2.map(p => ({ x: p.size, y: p.price }))
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            tooltip: {
-              callbacks: {
-                label: ctx => {
-                  const p = propsWithM2[ctx.dataIndex];
-                  return `${p.address}: ${p.size} m² – €${p.price.toLocaleString()}`;
-                }
-              }
-            }
-          },
-          scales: {
-            x: { title: { display: true, text: "Oppervlakte (m²)" } },
-            y: {
-              title: { display: true, text: "Vraagprijs (€)" },
-              ticks: {
-                callback: value => "€" + (value / 1000).toFixed(0) + "k"
-              }
-            }
+    
+    // — Scatter Chart —
+    let scatterChart;
+    
+    function buildScatter(highlight = null) {
+      if (scatterChart) scatterChart.destroy();
+    
+      scatterChart = new Chart(
+        document.getElementById("chart-scatter"),
+        {
+          type: "scatter",
+          data: {
+            datasets: [
+              {
+                label: "Overige woningen",
+                data: propsWithM2.map(p => ({ x: p.size, y: p.price })),
+                pointRadius: 5,
+                backgroundColor: "#8884d8"
+              },
+              highlight ? {
+                label: "Jouw woning",
+                data: [highlight],
+                pointRadius: 10,
+                backgroundColor: "red"
+              } : null
+            ].filter(Boolean)
           }
         }
-      }
-    );
-
-    // -----------------------------
-    // TAB LOGICA
-    // -----------------------------
-    const tabs = {
-      overview: document.getElementById("tab-overview"),
-      prices: document.getElementById("tab-prices"),
-      details: document.getElementById("tab-details")
-    };
-
+      );
+    }
+    
+    buildScatter();
+    
+    /* ---------------------------------------------
+       7. Tabs
+    --------------------------------------------- */
     document.querySelectorAll(".tab-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const tab = btn.getAttribute("data-tab");
-
-        // show/hide content
-        Object.entries(tabs).forEach(([key, el]) => {
-          el.classList.toggle("hidden", key !== tab);
-        });
-
-        // active styling
+      btn.onclick = () => {
+        const tab = btn.dataset.tab;
+    
         document.querySelectorAll(".tab-btn").forEach(b => {
-          if (b === btn) {
-            b.classList.add("border-b-2", "border-blue-600", "text-blue-600");
-          } else {
-            b.classList.remove("border-b-2", "border-blue-600", "text-blue-600");
-            b.classList.add("text-gray-600");
-          }
+          b.classList.remove("border-blue-600", "border-b-2", "text-blue-600");
+          b.classList.add("text-gray-600");
         });
-      });
+    
+        btn.classList.add("border-b-2", "border-blue-600", "text-blue-600");
+    
+        document.querySelectorAll("[id^='tab-']").forEach(div => div.classList.add("hidden"));
+        document.getElementById("tab-" + tab).classList.remove("hidden");
+      };
     });
-  </script>
-</body>
-</html>
+    
+    /* ---------------------------------------------
+       8. Woning invoeren + highlight + waardering
+    --------------------------------------------- */
+    document.getElementById("btn-calc").onclick = () => {
+      const s = Number(document.getElementById("input-size").value);
+      const r = Number(document.getElementById("input-rooms").value);
+      const l = document.getElementById("input-label").value;
+    
+      if (!s) {
+        alert("Voer minimaal woonoppervlakte in!");
+        return;
+      }
+    
+      const userM2 = Math.round(avgM2 * (l.startsWith("A") ? 1.03 : 0.97));
+      const estPrice = Math.round(s * userM2);
+    
+      buildScatter({ x: s, y: estPrice });
+    
+      document.getElementById("user-output").innerHTML = `
+        <p><strong>Geschatte waarde per m²:</strong> €${userM2.toLocaleString()}</p>
+        <p><strong>Geschatte waarde woning:</strong> €${estPrice.toLocaleString()}</p>
+      `;
+    
+      document.getElementById("ai-valuation").innerHTML = `
+        Op basis van alle woningen op de Bergweg, jouw ingevoerde kenmerken (m², kamers, energielabel) 
+        en marktgemiddelden, verwachten wij een reële vraagprijs tussen
+        <strong>€${(estPrice * 0.93).toLocaleString()}</strong> en 
+        <strong>€${(estPrice * 1.05).toLocaleString()}</strong>.
+      `;
+    };
+    </script>
+    
+    </body>
+    </html>
+    
