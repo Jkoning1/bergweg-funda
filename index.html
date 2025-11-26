@@ -497,306 +497,280 @@
 { address: "Bergselaan 130-A", price: 750000, size: 136, rooms: 3, label: "C", status: "Onder voorbehoud" },
 ];
 
-    /* ---------------------------------------------
-       2. Preprocessing & basis-statistieken
-    --------------------------------------------- */
-    const propsWithM2 = properties
-      .filter(p => p.size > 0)
-      .map(p => ({
-        ...p,
-        pricePerM2: Math.round(p.price / p.size)
-      }));
 
-    const avg = arr =>
-      arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : 0;
 
-    const avgM2    = avg(propsWithM2.map(p => p.pricePerM2));
-    const avgPrice = avg(propsWithM2.map(p => p.price));
-    const avgSize  = avg(propsWithM2.map(p => p.size));
+/* ---------------------------------------------
+   2. PREPROCESSING & BASISSTATISTIEKEN
+--------------------------------------------- */
+const propsWithM2 = properties
+  .filter(p => p.size > 0)
+  .map(p => ({
+    ...p,
+    pricePerM2: Math.round(p.price / p.size)
+  }));
 
-    const maxM2 = Math.max(...propsWithM2.map(p => p.pricePerM2));
-    const minM2 = Math.min(...propsWithM2.map(p => p.pricePerM2));
+const avg = arr =>
+  arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : 0;
 
-    const soldCount = properties.filter(p => p.status === "Verkocht").length;
-    const soldPct   = Math.round((soldCount / properties.length) * 100);
+const avgM2    = avg(propsWithM2.map(p => p.pricePerM2));
+const avgPrice = avg(propsWithM2.map(p => p.price));
+const avgSize  = avg(propsWithM2.map(p => p.size));
 
-    const AplusCount = properties.filter(p => p.label && p.label.startsWith("A")).length;
-    const AplusPct   = Math.round((AplusCount / properties.length) * 100);
+const maxM2 = Math.max(...propsWithM2.map(p => p.pricePerM2));
+const minM2 = Math.min(...propsWithM2.map(p => p.pricePerM2));
 
-    const m2Ranges = [
-      { range: "€3.000–€4.000", min: 3000, max: 4000, count: 0 },
-      { range: "€4.000–€5.000", min: 4000, max: 5000, count: 0 },
-      { range: "€5.000–€6.000", min: 5000, max: 6000, count: 0 },
-      { range: "€6.000–€7.000", min: 6000, max: 7000, count: 0 },
-      { range: "€7.000+",      min: 7000, max: 20000, count: 0 }
-    ];
+/* ---------------------------------------------
+   Extra statistieken
+--------------------------------------------- */
+const soldCount = properties.filter(p => p.status === "Verkocht").length;
+const soldPct   = Math.round((soldCount / properties.length) * 100);
 
-    propsWithM2.forEach(p => {
-      const r = m2Ranges.find(x => p.pricePerM2 >= x.min && p.pricePerM2 < x.max);
-      if (r) r.count++;
+const AplusCount = properties.filter(p => p.label && p.label.startsWith("A")).length;
+const AplusPct   = Math.round((AplusCount / properties.length) * 100);
+
+/* ---------------------------------------------
+   m² Ranges
+--------------------------------------------- */
+const m2Ranges = [
+  { range: "€3.000–€4.000", min: 3000, max: 4000, count: 0 },
+  { range: "€4.000–€5.000", min: 4000, max: 5000, count: 0 },
+  { range: "€5.000–€6.000", min: 5000, max: 6000, count: 0 },
+  { range: "€6.000–€7.000", min: 6000, max: 7000, count: 0 },
+  { range: "€7.000+",      min: 7000, max: 20000, count: 0 }
+];
+
+propsWithM2.forEach(p => {
+  const r = m2Ranges.find(x => p.pricePerM2 >= x.min && p.pricePerM2 < x.max);
+  if (r) r.count++;
+});
+
+/* ---------------------------------------------
+   3. KPI's
+--------------------------------------------- */
+document.getElementById("kpis").innerHTML = `
+  <div class="bg-white p-6 shadow rounded">
+    <p class="text-sm text-gray-600">Gemiddelde prijs/m²</p>
+    <p class="text-2xl font-bold text-blue-600">€${avgM2.toLocaleString()}</p>
+  </div>
+  <div class="bg-white p-6 shadow rounded">
+    <p class="text-sm text-gray-600">Gemiddelde prijs</p>
+    <p class="text-2xl font-bold text-green-600">€${avgPrice.toLocaleString()}</p>
+  </div>
+  <div class="bg-white p-6 shadow rounded">
+    <p class="text-sm text-gray-600">Gem. oppervlakte</p>
+    <p class="text-2xl font-bold text-purple-600">${avgSize} m²</p>
+  </div>
+`;
+
+/* ---------------------------------------------
+   4. INSIGHTS
+--------------------------------------------- */
+const addInsight = txt => {
+  const ul = document.getElementById("insights");
+  const li = document.createElement("li");
+  li.className = "flex items-start";
+  li.innerHTML = `<span class='text-blue-500 mr-2'>•</span>${txt}`;
+  ul.appendChild(li);
+};
+
+addInsight(`Gemiddelde prijs per m²: <strong>€${avgM2.toLocaleString()}</strong>.`);
+addInsight(`${soldPct}% van alle woningen is verkocht (${soldCount} van de ${properties.length}).`);
+addInsight(`Laagste m²-prijs: €${minM2.toLocaleString()} – hoogste €${maxM2.toLocaleString()}.`);
+addInsight(`Energielabel A of hoger: ${AplusPct}% van alle woningen.`);
+
+/* ---------------------------------------------
+   5. DETAILS TABEL
+--------------------------------------------- */
+const tableBody = document.getElementById("table-body");
+
+propsWithM2
+  .slice()
+  .sort((a, b) => b.pricePerM2 - a.pricePerM2)
+  .forEach(p => {
+    tableBody.innerHTML += `
+      <tr class="border-b">
+        <td class="px-4 py-2">${p.address}</td>
+        <td class="px-4 py-2">€${p.price.toLocaleString()}</td>
+        <td class="px-4 py-2">${p.size}</td>
+        <td class="px-4 py-2 text-blue-600 font-bold">€${p.pricePerM2.toLocaleString()}</td>
+        <td class="px-4 py-2">${p.status}</td>
+      </tr>`;
+  });
+
+/* ---------------------------------------------
+   6. GRAFIEK 1 – Bar: m² verdeling
+--------------------------------------------- */
+new Chart(document.getElementById("chart-m2ranges"), {
+  type: "bar",
+  data: {
+    labels: m2Ranges.map(r => r.range),
+    datasets: [{
+      data: m2Ranges.map(r => r.count),
+      backgroundColor: "#3b82f6"
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true } }
+  }
+});
+
+/* ---------------------------------------------
+   7. GRAFIEK 2 – HEATMAP (kamers vs m²)
+--------------------------------------------- */
+const heatmapMatrix = {};
+propsWithM2.forEach(p => {
+  if (!heatmapMatrix[p.rooms]) heatmapMatrix[p.rooms] = [];
+  heatmapMatrix[p.rooms].push(p.pricePerM2);
+});
+
+const heatmapLabels = Object.keys(heatmapMatrix).sort((a, b) => a - b);
+const heatmapValues = heatmapLabels.map(r => avg(heatmapMatrix[r]));
+
+const heatColors = heatmapValues.map(v => {
+  const ratio = (v - minM2) / (maxM2 - minM2 || 1);
+  return `rgb(${Math.round(255 * ratio)}, ${Math.round(255 * (1 - ratio))}, 80)`;
+});
+
+new Chart(document.getElementById("chart-heatmap"), {
+  type: "bar",
+  data: {
+    labels: heatmapLabels.map(l => `${l} kamers`),
+    datasets: [{
+      data: heatmapValues,
+      backgroundColor: heatColors
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: false } }
+  }
+});
+
+/* ---------------------------------------------
+   8. GRAFIEK 3 – Energielabels
+--------------------------------------------- */
+const labelGroups = {};
+propsWithM2.forEach(p => {
+  if (!p.label || p.label === "?") return;
+  if (!labelGroups[p.label]) labelGroups[p.label] = [];
+  labelGroups[p.label].push(p.pricePerM2);
+});
+
+const labelNames = Object.keys(labelGroups).sort();
+const labelAvg = labelNames.map(l => avg(labelGroups[l]));
+
+new Chart(document.getElementById("chart-labels"), {
+  type: "bar",
+  data: {
+    labels: labelNames,
+    datasets: [{
+      data: labelAvg,
+      backgroundColor: "#10b981"
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: false } }
+  }
+});
+
+/* ---------------------------------------------
+   9. GRAFIEK 4 – TREND
+--------------------------------------------- */
+const months = ["Jan", "Feb", "Mrt", "Apr", "Mei", "Jun", "Jul", "Aug", "Sep"];
+const trendData = months.map(() =>
+  avgPrice * (0.95 + Math.random() * 0.1)
+);
+
+new Chart(document.getElementById("chart-trend"), {
+  type: "line",
+  data: {
+    labels: months,
+    datasets: [{
+      data: trendData,
+      borderColor: "#3b82f6",
+      tension: 0.4
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      y: {
+        ticks: {
+          callback: value => "€" + (value / 1000).toFixed(0) + "k"
+        }
+      }
+    }
+  }
+});
+
+/* ---------------------------------------------
+   10. SCATTER – VOOR JOUW WONING
+--------------------------------------------- */
+let scatterChart;
+
+function buildScatter(highlight = null) {
+  if (scatterChart) scatterChart.destroy();
+
+  const allPoints = propsWithM2.map(p => ({
+    x: p.size,
+    y: p.price,
+    address: p.address
+  }));
+
+  const datasets = [{
+    label: "Overige woningen",
+    data: allPoints,
+    pointRadius: 5,
+    backgroundColor: "#8884d8"
+  }];
+
+  if (highlight) {
+    datasets.push({
+      label: "Jouw woning",
+      data: [highlight],
+      pointRadius: 9,
+      backgroundColor: "red"
     });
+  }
 
-    /* ---------------------------------------------
-       3. KPI's invullen
-    --------------------------------------------- */
-    document.getElementById("kpis").innerHTML = `
-      <div class="bg-white p-6 shadow rounded">
-        <p class="text-sm text-gray-600">Gemiddelde prijs/m²</p>
-        <p class="text-2xl font-bold text-blue-600">€${avgM2.toLocaleString()}</p>
-      </div>
-      <div class="bg-white p-6 shadow rounded">
-        <p class="text-sm text-gray-600">Gemiddelde prijs</p>
-        <p class="text-2xl font-bold text-green-600">€${avgPrice.toLocaleString()}</p>
-      </div>
-      <div class="bg-white p-6 shadow rounded">
-        <p class="text-sm text-gray-600">Gem. oppervlakte</p>
-        <p class="text-2xl font-bold text-purple-600">${avgSize} m²</p>
-      </div>
-    `;
-
-    /* ---------------------------------------------
-       4. Insights invullen
-    --------------------------------------------- */
-    const addInsight = txt => {
-      const ul = document.getElementById("insights");
-      const li = document.createElement("li");
-      li.className = "flex items-start";
-      li.innerHTML = `<span class='text-blue-500 mr-2'>•</span>${txt}`;
-      ul.appendChild(li);
-    };
-
-    addInsight(`Gemiddelde prijs per m²: <strong>€${avgM2.toLocaleString()}</strong>.`);
-    addInsight(`${soldPct}% van alle woningen is verkocht (${soldCount} van de ${properties.length}).`);
-    addInsight(`Laagste m²-prijs: €${minM2.toLocaleString()}. Hoogste: €${maxM2.toLocaleString()}.`);
-    addInsight(`${AplusPct}% van de woningen heeft energielabel A of hoger (${AplusCount} woningen).`);
-
-    /* ---------------------------------------------
-       5. Details tabel
-    --------------------------------------------- */
-    const tableBody = document.getElementById("table-body");
-
-    propsWithM2
-      .slice()
-      .sort((a, b) => b.pricePerM2 - a.pricePerM2)
-      .forEach(p => {
-        tableBody.innerHTML += `
-          <tr class="border-b">
-            <td class="px-4 py-2">${p.address}</td>
-            <td class="px-4 py-2">€${p.price.toLocaleString()}</td>
-            <td class="px-4 py-2">${p.size}</td>
-            <td class="px-4 py-2 text-blue-600 font-bold">€${p.pricePerM2.toLocaleString()}</td>
-            <td class="px-4 py-2">${p.status}</td>
-          </tr>
-        `;
-      });
-
-    /* ---------------------------------------------
-       6. Grafiek 1 – Bar: verdeling prijs/m²
-    --------------------------------------------- */
-    new Chart(
-      document.getElementById("chart-m2ranges"),
-      {
-        type: "bar",
-        data: {
-          labels: m2Ranges.map(r => r.range),
-          datasets: [{
-            label: "Aantal woningen",
-            data: m2Ranges.map(r => r.count),
-            backgroundColor: "#3b82f6"
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: false }
-          },
-          scales: {
-            y: { beginAtZero: true }
+  scatterChart = new Chart(
+    document.getElementById("chart-scatter"),
+    {
+      type: "scatter",
+      data: { datasets },
+      options: {
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const d = ctx.raw;
+                return `${d.address || "Jouw woning"}: ${d.x} m² – €${d.y.toLocaleString()}`;
+              }
+            }
           }
-        }
-      }
-    );
-
-    /* ---------------------------------------------
-       7. Grafiek 2 – Heatmap: m²-prijs vs kamers
-    --------------------------------------------- */
-    const heatmapMatrix = {};
-    propsWithM2.forEach(p => {
-      if (!heatmapMatrix[p.rooms]) heatmapMatrix[p.rooms] = [];
-      heatmapMatrix[p.rooms].push(p.pricePerM2);
-    });
-
-    const heatmapLabels = Object.keys(heatmapMatrix).sort((a, b) => a - b);
-    const heatmapValues = heatmapLabels.map(r => {
-      const arr = heatmapMatrix[r];
-      return avg(arr);
-    });
-
-    const heatColors = heatmapValues.map(v => {
-      const ratio = (v - minM2) / (maxM2 - minM2 || 1);
-      const red = Math.round(255 * ratio);
-      const green = Math.round(255 * (1 - ratio));
-      return `rgb(${red}, ${green}, 80)`;
-    });
-
-    new Chart(document.getElementById("chart-heatmap"), {
-      type: "bar",
-      data: {
-        labels: heatmapLabels.map(l => `${l} kamers`),
-        datasets: [{
-          data: heatmapValues,
-          backgroundColor: heatColors,
-          borderWidth: 1
-        }]
-      },
-      options: {
-        plugins: { legend: { display: false } },
-        scales: {
-          y: { beginAtZero: false, title: { display: true, text: "€ per m²" } }
-        }
-      }
-    });
-
-    /* ---------------------------------------------
-       8. Grafiek 3 – Bar: Gem. m²-prijs per label
-    --------------------------------------------- */
-    const labelGroups = {};
-    propsWithM2.forEach(p => {
-      if (!p.label || p.label === "?") return;
-      if (!labelGroups[p.label]) labelGroups[p.label] = [];
-      labelGroups[p.label].push(p.pricePerM2);
-    });
-
-    const labelNames = Object.keys(labelGroups).sort();
-    const labelAvg = labelNames.map(l => avg(labelGroups[l]));
-
-    new Chart(document.getElementById("chart-labels"), {
-      type: "bar",
-      data: {
-        labels: labelNames,
-        datasets: [{
-          label: "Gem. € / m²",
-          data: labelAvg,
-          backgroundColor: "#10b981"
-        }]
-      },
-      options: {
-        plugins: {
-          legend: { display: false }
         },
         scales: {
-          y: { beginAtZero: false }
-        }
-      }
-    });
-
-    /* ---------------------------------------------
-       9. Grafiek 4 – Lijn: (gesimuleerde) trend
-    --------------------------------------------- */
-    const months = ["Jan", "Feb", "Mrt", "Apr", "Mei", "Jun", "Jul", "Aug", "Sep"];
-    const trendData = months.map(() => {
-      // Simpele simulatie: rond gemiddelde prijs
-      return avgPrice * (0.95 + Math.random() * 0.1);
-    });
-
-    new Chart(document.getElementById("chart-trend"), {
-      type: "line",
-      data: {
-        labels: months,
-        datasets: [{
-          label: "Gemiddelde vraagprijs (simulatie)",
-          data: trendData,
-          borderColor: "#3b82f6",
-          tension: 0.4,
-          fill: false
-        }]
-      },
-      options: {
-        plugins: {
-          legend: { display: false }
-        },
-        scales: {
+          x: { title: { display: true, text: "Oppervlakte (m²)" } },
           y: {
+            title: { display: true, text: "Prijs (€)" },
             ticks: {
               callback: value => "€" + (value / 1000).toFixed(0) + "k"
             }
           }
         }
       }
-    });
-
-    /* ---------------------------------------------
-       10. Scatterchart helper – wordt later ook
-           gebruikt voor jouw woning (highlight)
-    --------------------------------------------- */
-    let scatterChart;
-
-    function buildScatter(highlight = null) {
-      if (scatterChart) scatterChart.destroy();
-
-      const allPoints = propsWithM2.map(p => ({
-        x: p.size,
-        y: p.price,
-        address: p.address
-      }));
-
-      const datasets = [
-        {
-          label: "Overige woningen",
-          data: allPoints,
-          pointRadius: 5,
-          backgroundColor: "#8884d8"
-        }
-      ];
-
-      if (highlight) {
-        datasets.push({
-          label: "Jouw woning",
-          data: [highlight],
-          pointRadius: 9,
-          backgroundColor: "red"
-        });
-      }
-
-      scatterChart = new Chart(
-        document.getElementById("chart-scatter"),
-        {
-          type: "scatter",
-          data: { datasets },
-          options: {
-            plugins: {
-              tooltip: {
-                callbacks: {
-                  label: ctx => {
-                    const d = ctx.raw;
-                    const price = d.y.toLocaleString();
-                    const size  = d.x;
-                    const addr  = d.address || "Jouw woning";
-                    return `${addr}: ${size} m² – €${price}`;
-                  }
-                }
-              },
-              legend: { display: true }
-            },
-            scales: {
-              x: { title: { display: true, text: "Oppervlakte (m²)" } },
-              y: {
-                title: { display: true, text: "Vraagprijs (€)" },
-                ticks: {
-                  callback: value => "€" + (value / 1000).toFixed(0) + "k"
-                }
-              }
-            }
-          }
-        }
-      );
     }
+  );
+}
 
-    // initial scatter zonder highlight
-    buildScatter();
+// Eerste render
+buildScatter();
 
 /* ---------------------------------------------
-   RADAR CHART – Impact per factor (%)
+   11. RADAR CHART – voorbereid (render functie)
 --------------------------------------------- */
 let radarChart;
 
@@ -805,53 +779,36 @@ function renderRadarChart(breakdown) {
   const labels = [];
   const deltas = [];
 
-  breakdown.forEach((step, index) => {
-    const prev = index === 0 
-      ? step.waarde
-      : breakdown[index - 1].waarde;
-
+  breakdown.forEach((step, i) => {
+    const prev = i === 0 ? step.waarde : breakdown[i - 1].waarde;
     const delta = ((step.waarde - prev) / prev) * 100;
     labels.push(step.stap);
     deltas.push(parseFloat(delta.toFixed(1)));
   });
 
-  const ctx = document.getElementById("chart-radar").getContext("2d");
+  const ctx = document.getElementById("chart-radar");
 
   if (radarChart) radarChart.destroy();
 
   radarChart = new Chart(ctx, {
     type: "radar",
     data: {
-      labels: labels,
+      labels,
       datasets: [{
         data: deltas,
-        label: "Factorimpact (%)",
         fill: true,
-        backgroundColor: "rgba(37, 99, 235, 0.25)",
+        backgroundColor: "rgba(37, 99, 235, 0.2)",
         borderColor: "rgba(37, 99, 235, 1)",
-        borderWidth: 2,
-        pointBackgroundColor: "rgba(37, 99, 235, 1)",
-        pointBorderColor: "#fff",
-        pointHoverBorderColor: "rgba(37, 99, 235, 1)"
+        pointBackgroundColor: "rgba(37, 99, 235, 1)"
       }]
     },
     options: {
-      responsive: true,
       plugins: { legend: { display: false } },
       scales: {
         r: {
-          suggestedMin: Math.min(...deltas, -10),
-          suggestedMax: Math.max(...deltas, 10),
           ticks: {
             callback: v => v + "%",
-            backdropColor: "transparent",
-            color: "#555"
-          },
-          angleLines: { color: "#e5e7eb" },
-          grid: { color: "#e5e7eb" },
-          pointLabels: {
-            color: "#333",
-            font: { size: 12 }
+            backdropColor: "transparent"
           }
         }
       }
@@ -860,80 +817,91 @@ function renderRadarChart(breakdown) {
 }
 
 /* ---------------------------------------------
-   11. Tabswitching
+   12. TAB SWITCHING
 --------------------------------------------- */
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.onclick = () => {
     const tab = btn.dataset.tab;
 
-    // Buttons resetten
     document.querySelectorAll(".tab-btn").forEach(b => {
-      b.classList.remove("border-blue-600", "border-b-2", "text-blue-600");
+      b.classList.remove("border-blue-600", "text-blue-600", "border-b-2");
       b.classList.add("text-gray-600");
     });
 
-    // Actieve button
     btn.classList.add("border-b-2", "border-blue-600", "text-blue-600");
 
-    // Alle tab-content verbergen
     document.querySelectorAll("[id^='tab-']").forEach(div =>
       div.classList.add("hidden")
     );
 
-    // Gewenste tab tonen
     document.getElementById("tab-" + tab).classList.remove("hidden");
   };
 });
 
 
+
 /* ---------------------------------------------
-   12. Geavanceerd Waarderingsmodel — AI Taxatie (REALISTISCH & COMPLEET)
+   13. GEAVANCEERD WAARDERINGSMODEL – AI TAXATIE
+   (maakt gebruik van avgM2 uit deel 1)
 --------------------------------------------- */
-
-/**
- * Stap 0: Bepaal de basis m²-prijs op basis van woningtype.
- * Een appartement is per m² duurder dan een vrijstaand huis (minder grond/lucht).
- */
- function getBaseM2(buurtGemiddelde, woningType) {
-  const typeFactors = {
-    "appartement": 1.12,      // Duurder per m² (kleiner, efficiënt)
-    "benedenwoning": 1.08,
-    "bovenwoning": 1.05,
-    "tussenwoning": 1.00,     // De standaard
-    "hoekwoning": 1.02,
-    "twee_onder_een_kap": 0.97,
-    "vrijstaand": 0.94        // Goedkoper per m² (groot oppervlak, veel 'gang/zolder')
-  };
-  
-  // Fallback naar 1.0 als type onbekend is
-  const factor = typeFactors[woningType] || 1.00; 
-  return Math.round(buurtGemiddelde * factor);
-}
-
-function calculateValueDetailed({ size, rooms, label, bouwjaar, onderhoud, erfpacht, servicekosten, buitenruimte, woningType }) {
-
+function calculateValueDetailed({
+  size,
+  rooms,
+  label,
+  bouwjaar,
+  onderhoud,
+  erfpacht,
+  servicekosten,
+  buitenruimte,
+  woningType
+}) {
   const breakdown = [];
-  
-  // 1. BASIS PRIJS
-  // We starten niet met het "domme" gemiddelde, maar het gemiddelde gecorrigeerd voor type.
-  let currentM2 = getBaseM2(avgM2, woningType);
-  
-  breakdown.push({ 
-    stap: `Startwaarde (${woningType || 'algemeen'})`, 
-    waarde: Math.round(currentM2), 
-    factor: (currentM2 / avgM2) // Laat zien hoeveel dit afwijkt van buurtgemiddelde
+
+  /* ------------------------------------------
+     0. STARTWAARDE — buurtgemiddelde m²-prijs
+  ------------------------------------------ */
+  let currentM2 = avgM2;
+  if (!currentM2 || !isFinite(currentM2)) {
+    // Fallback als er (nog) geen data is
+    currentM2 = 4000;
+  }
+
+  breakdown.push({
+    stap: "Startwaarde (buurtgemiddelde)",
+    factor: 1,
+    waarde: Math.round(currentM2)
   });
 
   /* ------------------------------------------
-     A. GROOTTE-EFFECT (Logaritmisch)
-     Kleine woningen zijn altijd duurder per m². Grote woningen goedkoper.
-     We gebruiken 85m² als referentiepunt.
+     1. WONINGTYPE – lichte correctie
   ------------------------------------------ */
-  const refSize = 85; 
-  // Power law: hoe kleiner het huis, hoe hoger de factor. 
-  // Macht 0.15 is een realistische markt-elasticiteit.
-  const sizeFactor = Math.pow((refSize / size), 0.15); 
-  
+  const typeFactors = {
+    "appartement": 0.97,
+    "benedenwoning": 1.00,
+    "bovenwoning": 1.00,
+    "tussenwoning": 1.02,
+    "hoekwoning": 1.03,
+    "twee_onder_een_kap": 1.04,
+    "vrijstaand": 1.06
+  };
+
+  const fType = typeFactors[woningType] || 1;
+  currentM2 *= fType;
+
+  if (fType !== 1) {
+    breakdown.push({
+      stap: `Woningtype (${woningType})`,
+      factor: fType,
+      waarde: Math.round(currentM2)
+    });
+  }
+
+  /* ------------------------------------------
+     2. GROOTTE-EFFECT (logaritmisch)
+  ------------------------------------------ */
+  const refSize = 85;
+  const sizeFactor = Math.pow((refSize / size), 0.15);
+
   currentM2 *= sizeFactor;
   breakdown.push({
     stap: `Grootte-correctie (${size} m²)`,
@@ -942,144 +910,149 @@ function calculateValueDetailed({ size, rooms, label, bouwjaar, onderhoud, erfpa
   });
 
   /* ------------------------------------------
-     B. BOUWJAAR & LABEL (Interactie Check)
-     Voorkom dubbeltelling: Nieuwbouw is al goed geïsoleerd.
+     3. BOUWJAAR & LABEL (interactie)
   ------------------------------------------ */
-  
-  // 1. Bouwjaar correctie
   let fYear = 1;
-  if (bouwjaar >= 2020) fYear = 1.08;       // Nieuwbouw premium
+  if (bouwjaar >= 2020) fYear = 1.08;
   else if (bouwjaar >= 2010) fYear = 1.05;
   else if (bouwjaar >= 2000) fYear = 1.02;
-  else if (bouwjaar >= 1990) fYear = 1.00;  // Referentie
-  else if (bouwjaar >= 1970) fYear = 0.94;  // Vaak mindere bouwkwaliteit
-  else if (bouwjaar >= 1930) fYear = 0.97;  // Jaren 30 populair (correctie omhoog)
-  else fYear = 0.92;                        // Oudbouw risico's
+  else if (bouwjaar >= 1990) fYear = 1.00;
+  else if (bouwjaar >= 1970) fYear = 0.94;
+  else if (bouwjaar >= 1930) fYear = 0.97;
+  else fYear = 0.92;
 
-  // 2. Energielabel correctie
-  const labelMap = { 
-    "A+++": 1.06, "A++": 1.05, "A+": 1.04, "A": 1.03, 
-    "B": 1.00, "C": 0.97, "D": 0.93, "E": 0.90, "F": 0.86, "G": 0.82 
+  currentM2 *= fYear;
+  breakdown.push({
+    stap: `Bouwjaar (${bouwjaar})`,
+    factor: fYear,
+    waarde: Math.round(currentM2)
+  });
+
+  const labelMap = {
+    "A+++": 1.06, "A++": 1.05, "A+": 1.04, "A": 1.03,
+    "B": 1.00, "C": 0.97, "D": 0.93, "E": 0.90, "F": 0.86, "G": 0.82
   };
+
   let fLabel = labelMap[label] || 0.96;
 
-  // REALISME CHECK: Als huis > 2010 is, is label A standaard. 
-  // We verlagen de label-bonus om dubbeltelling met bouwjaar te voorkomen.
+  // Dubbeltelling voorkomen bij recente bouwjaren
   if (bouwjaar >= 2010 && ["A", "A+", "A++", "A+++"].includes(label)) {
-      fLabel = 1.005; // Nauwelijks extra bonus, zit al in bouwjaar
+    fLabel = 1.005;
   }
 
-  // Pas toe
-  currentM2 *= fYear;
-  breakdown.push({ stap: `Bouwjaar (${bouwjaar})`, factor: fYear, waarde: Math.round(currentM2) });
-  
   currentM2 *= fLabel;
-  breakdown.push({ stap: `Energielabel (${label})`, factor: fLabel, waarde: Math.round(currentM2) });
+  breakdown.push({
+    stap: `Energielabel (${label})`,
+    factor: fLabel,
+    waarde: Math.round(currentM2)
+  });
 
   /* ------------------------------------------
-     C. ONDERHOUD (Asymmetrisch)
-     Slecht onderhoud (kosten) weegt zwaarder dan luxe (sfeer).
+     4. ONDERHOUD (asymmetrisch)
   ------------------------------------------ */
   const maintMap = {
-    "slecht": 0.82,     // Zware afstraffing (verbouwingskosten)
+    "slecht": 0.82,
     "matig": 0.92,
     "normaal": 1.00,
     "goed": 1.03,
-    "luxe": 1.06,       // Luxe is smaakgevoelig
+    "luxe": 1.06,
     "zeer_luxe": 1.09
   };
+
   const fMaint = maintMap[onderhoud] || 1;
   currentM2 *= fMaint;
-  
-  breakdown.push({ stap: `Staat van onderhoud (${onderhoud})`, factor: fMaint, waarde: Math.round(currentM2) });
+
+  breakdown.push({
+    stap: `Staat van onderhoud (${onderhoud})`,
+    factor: fMaint,
+    waarde: Math.round(currentM2)
+  });
 
   /* ------------------------------------------
-     D. KAMERS
+     5. KAMERS – efficiëntie-indicator
   ------------------------------------------ */
-  // Minder zwaar wegend dan m2, maar relevant voor verhuurbaarheid/courantheid
   let fRooms = 1;
-  if (rooms / size > 0.08) fRooms = 0.98; // Te veel hokjes ("konijnenhok")
-  else if (rooms >= 4) fRooms = 1.02;     // Gezinswoning
-  else if (rooms <= 2 && size > 80) fRooms = 0.97; // Inefficiënte indeling
+  if (rooms / size > 0.08) fRooms = 0.98;           // Te veel hokjes
+  else if (rooms >= 4) fRooms = 1.02;               // Gezinswoning
+  else if (rooms <= 2 && size > 80) fRooms = 0.97;  // Inefficiënt
 
   currentM2 *= fRooms;
-  if(fRooms !== 1) {
-      breakdown.push({ stap: `Indeling (${rooms} kamers)`, factor: fRooms, waarde: Math.round(currentM2) });
+
+  if (fRooms !== 1) {
+    breakdown.push({
+      stap: `Indeling (${rooms} kamers)`,
+      factor: fRooms,
+      waarde: Math.round(currentM2)
+    });
   }
 
   /* ------------------------------------------
-     E. BEREKEN TUSSENSTAND
-     Nu hebben we de "Kale steen prijs". Hierna komen vaste bedragen.
+     6. TUSSENSTAND — kale stenenprijs
   ------------------------------------------ */
   let estimatedPrice = currentM2 * size;
 
   /* ------------------------------------------
-     F. BUITENRUIMTE (Lump sum met CAP)
-     Een tuin is geld waard, maar niet lineair met de huisprijs.
+     7. BUITENRUIMTE – lump sum (met cap)
   ------------------------------------------ */
   const outdoorFactors = {
     "geen": 0,
-    "balkon": 0.03,      
-    "dakterras": 0.05,   
-    "tuin_klein": 0.07,  
-    "tuin_groot": 0.12   
+    "balkon": 0.03,
+    "dakterras": 0.05,
+    "tuin_klein": 0.07,
+    "tuin_groot": 0.12
   };
-  
+
   let outdoorPct = outdoorFactors[buitenruimte] || 0;
   let outdoorValue = estimatedPrice * outdoorPct;
-  
-  // CAP: Maximaal €65.000 meerwaarde voor buitenruimte (tenzij landgoed, maar dat valt buiten dit model)
-  const maxOutdoorValue = 65000; 
+
+  const maxOutdoorValue = 65000;
   if (outdoorValue > maxOutdoorValue) outdoorValue = maxOutdoorValue;
 
   estimatedPrice += outdoorValue;
-  
-  // Terugrekenen naar m2 voor de tabel (zodat de tabel consistent blijft)
   let m2WithOutdoor = estimatedPrice / size;
-  
+
   if (outdoorValue > 0) {
-      breakdown.push({ 
-          stap: `Buitenruimte (${buitenruimte})`, 
-          factor: m2WithOutdoor / currentM2, // Virtuele factor
-          waarde: Math.round(m2WithOutdoor) 
-      });
+    breakdown.push({
+      stap: `Buitenruimte (${buitenruimte})`,
+      factor: m2WithOutdoor / currentM2,
+      waarde: Math.round(m2WithOutdoor)
+    });
   }
+
   currentM2 = m2WithOutdoor;
 
   /* ------------------------------------------
-     G. HARDE CORRECTIES (Erfpacht & VvE)
-     Dit zijn financiële lasten die direct van de koopsom af gaan.
+     8. ERFPACHT & VvE – harde correcties
   ------------------------------------------ */
   let fFinancial = 1;
 
-  // Erfpacht
-  if (erfpacht === "erfpacht_canon") fFinancial *= 0.90; // Canon drukt leencapaciteit
-  if (erfpacht === "erfpacht_afgekocht") fFinancial *= 0.98; // Vaak minder geliefd dan eigen grond
+  if (erfpacht === "erfpacht_canon") fFinancial *= 0.90;
+  if (erfpacht === "erfpacht_afgekocht") fFinancial *= 0.98;
+  if (servicekosten > 250) fFinancial *= 0.96;
 
-  // Servicekosten (VvE)
-  if (servicekosten > 250) fFinancial *= 0.96; // Hoge maandlasten
-  
   currentM2 *= fFinancial;
   estimatedPrice *= fFinancial;
 
   if (fFinancial !== 1) {
-      breakdown.push({ stap: `Financiële correcties (Erfpacht/VvE)`, factor: fFinancial, waarde: Math.round(currentM2) });
+    breakdown.push({
+      stap: `Financiële correcties (Erfpacht/VvE)`,
+      factor: fFinancial,
+      waarde: Math.round(currentM2)
+    });
   }
 
   /* ------------------------------------------
-     EINDE & BANDBREEDTE (ONZEKERHEIDSMARGE)
+     9. ONZEKERHEIDSBAND
   ------------------------------------------ */
   const finalPrice = Math.round(estimatedPrice);
   const finalM2 = Math.round(finalPrice / size);
 
-  // Dynamische onzekerheid: 
-  // Hoe ouder of groter het huis, hoe minder zeker het model is.
-  let uncertainty = 0.05; // Basis 5%
-  if (bouwjaar < 1920) uncertainty += 0.025; // Oudbouw is 'gek'
-  if (size > 180) uncertainty += 0.03;       // Villa's zijn 'gek'
-  if (onderhoud === "slecht") uncertainty += 0.04; // Verbouwingen lopen vaak uit
+  let uncertainty = 0.05; // basis 5%
+  if (bouwjaar < 1920) uncertainty += 0.025;
+  if (size > 180) uncertainty += 0.03;
+  if (onderhoud === "slecht") uncertainty += 0.04;
 
-  const low = Math.round(finalPrice * (1 - uncertainty));
+  const low  = Math.round(finalPrice * (1 - uncertainty));
   const high = Math.round(finalPrice * (1 + uncertainty));
 
   return {
@@ -1092,24 +1065,21 @@ function calculateValueDetailed({ size, rooms, label, bouwjaar, onderhoud, erfpa
   };
 }
 
-
 /* ---------------------------------------------
-   13. Button → Berekening, Scatter & UI
+   14. BUTTON → BEREKENING + UI UPDATE
 --------------------------------------------- */
 document.getElementById("btn-calc").onclick = () => {
-
   // Inputs ophalen
-  const s = Number(document.getElementById("input-size").value);
-  const r = Number(document.getElementById("input-rooms").value);
-  const l = document.getElementById("input-label").value;
-  const bouwjaar = Number(document.getElementById("input-year").value || 1990);
-  const onderhoud = document.getElementById("input-condition").value;
-  const erfpacht = document.getElementById("input-lease").value;
+  const s  = Number(document.getElementById("input-size").value);
+  const r  = Number(document.getElementById("input-rooms").value);
+  const l  = document.getElementById("input-label").value;
+  const bouwjaar      = Number(document.getElementById("input-year").value || 1990);
+  const onderhoud     = document.getElementById("input-condition").value;
+  const erfpacht      = document.getElementById("input-lease").value;
   const servicekosten = Number(document.getElementById("input-service").value || 0);
-  const buitenruimte = document.getElementById("input-outdoor").value;
-  
-  // PROBEER WONINGTYPE TE VINDEN, ANDERS DEFAULT
-  const typeElem = document.getElementById("input-type");
+  const buitenruimte  = document.getElementById("input-outdoor").value;
+
+  const typeElem  = document.getElementById("input-type");
   const woningType = typeElem ? typeElem.value : "tussenwoning";
 
   if (!s) {
@@ -1117,7 +1087,7 @@ document.getElementById("btn-calc").onclick = () => {
     return;
   }
 
-  // De berekening
+  // Waardering berekenen
   const result = calculateValueDetailed({
     size: s,
     rooms: r,
@@ -1130,17 +1100,17 @@ document.getElementById("btn-calc").onclick = () => {
     woningType
   });
 
-  // Punt in scatter chart (Zorg dat buildScatter functie bestaat)
+  // Scatter chart updaten met jouw woning
   if (typeof buildScatter === "function") {
-      buildScatter({ x: s, y: result.price, address: "Jouw woning" });
+    buildScatter({ x: s, y: result.price, address: "Jouw woning" });
   }
 
-  // Uitleg genereren
-  const totaleFactor = (result.m2 / avgM2) || 1;
+  // Totale factor vs buurt-gemiddelde
+  const totaleFactor   = avgM2 ? (result.m2 / avgM2) : 1;
   const totaleFactorPct = ((totaleFactor - 1) * 100).toFixed(1);
-  const deltaColor = totaleFactorPct >= 0 ? "text-emerald-600" : "text-red-600";
-  const deltaSign = totaleFactorPct >= 0 ? "+" : "";
+  const deltaSign      = totaleFactorPct >= 0 ? "+" : "";
 
+  // Uitleg HTML
   const uitlegHtml = `
     <div class="bg-white border rounded p-4 space-y-4 shadow-sm">
       <h3 class="font-semibold text-lg mb-1 flex items-center gap-2">
@@ -1149,37 +1119,39 @@ document.getElementById("btn-calc").onclick = () => {
 
       <div class="bg-blue-50 border border-blue-100 rounded p-3 text-sm text-blue-900">
         <p>
-          Op basis van een <strong>${woningType}</strong> van ${s} m² in deze buurt. 
-          We hebben de gemiddelde m²-prijs geavanceerd gecorrigeerd voor 
-          grootte-efficiëntie, bouwkwaliteit en marktfactoren.
+          Op basis van een <strong>${woningType}</strong> van ${s} m² in deze buurt.
+          We hebben de gemiddelde m²-prijs gecorrigeerd voor grootte, bouwjaar, label,
+          onderhoud, indeling, buitenruimte en financiële lasten.
         </p>
       </div>
 
       <div>
-        <h4 class="font-semibold mb-2 text-xs uppercase tracking-wide text-gray-500">1. Waardebepaling factoren</h4>
+        <h4 class="font-semibold mb-2 text-xs uppercase tracking-wide text-gray-500">1. Waardebepaling per factor</h4>
         <div class="overflow-x-auto rounded border border-gray-200">
           <table class="min-w-full text-sm">
             <thead class="bg-gray-50 text-gray-600">
               <tr>
                 <th class="px-3 py-2 text-left font-medium">Factor</th>
                 <th class="px-3 py-2 text-right font-medium">Impact</th>
-                <th class="px-3 py-2 text-right font-medium">Tussenstand (m²)</th>
+                <th class="px-3 py-2 text-right font-medium">Tussenstand (€/m²)</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
               ${result.breakdown.map((step, index) => {
                 const prev = index === 0 ? avgM2 : result.breakdown[index - 1].waarde;
-                // Bereken delta % t.o.v. vorige stap
-                const rawDelta = ((step.waarde - prev) / prev) * 100;
+                const rawDelta = prev ? ((step.waarde - prev) / prev) * 100 : 0;
                 const deltaStr = rawDelta.toFixed(1) + "%";
-                const color = rawDelta > 0 ? "text-emerald-600" : (rawDelta < 0 ? "text-red-600" : "text-gray-400");
+                const color =
+                  rawDelta > 0 ? "text-emerald-600"
+                  : rawDelta < 0 ? "text-red-600"
+                  : "text-gray-400";
                 const plus = rawDelta > 0 ? "+" : "";
 
                 return `
                   <tr class="hover:bg-gray-50 transition-colors">
                     <td class="px-3 py-2 text-gray-700">${step.stap}</td>
                     <td class="px-3 py-2 text-right font-medium ${color}">
-                      ${index === 0 ? '-' : plus + deltaStr}
+                      ${index === 0 ? "-" : plus + deltaStr}
                     </td>
                     <td class="px-3 py-2 text-right text-gray-900">€${step.waarde.toLocaleString()}</td>
                   </tr>
@@ -1191,83 +1163,93 @@ document.getElementById("btn-calc").onclick = () => {
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          
-          <div class="p-3 bg-gray-50 rounded border border-gray-200">
-             <h4 class="font-semibold mb-2 text-xs uppercase tracking-wide text-gray-500">2. De Som</h4>
-             <div class="text-sm space-y-1 font-mono text-gray-700">
-                <div class="flex justify-between">
-                    <span>Oppervlakte:</span>
-                    <span>${s} m²</span>
-                </div>
-                <div class="flex justify-between">
-                    <span>Gecorrigeerde prijs:</span>
-                    <span>€${result.m2.toLocaleString()} /m²</span>
-                </div>
-                <div class="border-t border-gray-300 my-1"></div>
-                <div class="flex justify-between font-bold text-gray-900 text-base">
-                    <span>Taxatiewaarde:</span>
-                    <span>€${result.price.toLocaleString()}</span>
-                </div>
-             </div>
-             <p class="text-xs text-gray-500 mt-2">
-                Dit is ${deltaSign}${totaleFactorPct}% t.o.v. de gemiddelde buurtprijs.
-             </p>
+        <div class="p-3 bg-gray-50 rounded border border-gray-200">
+          <h4 class="font-semibold mb-2 text-xs uppercase tracking-wide text-gray-500">2. De Som</h4>
+          <div class="text-sm space-y-1 font-mono text-gray-700">
+            <div class="flex justify-between">
+              <span>Oppervlakte:</span>
+              <span>${s} m²</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Gecorrigeerde m²-prijs:</span>
+              <span>€${result.m2.toLocaleString()} /m²</span>
+            </div>
+            <div class="border-t border-gray-300 my-1"></div>
+            <div class="flex justify-between font-bold text-gray-900 text-base">
+              <span>Taxatiewaarde:</span>
+              <span>€${result.price.toLocaleString()}</span>
+            </div>
           </div>
+          <p class="text-xs text-gray-500 mt-2">
+            Dit is ${deltaSign}${totaleFactorPct}% t.o.v. de gemiddelde buurtprijs per m².
+          </p>
+        </div>
 
-          <div class="p-3 bg-indigo-50 rounded border border-indigo-100 flex flex-col justify-center">
-             <h4 class="font-semibold mb-1 text-xs uppercase tracking-wide text-indigo-800">3. Betrouwbaarheid</h4>
-             <p class="text-sm text-indigo-900 mb-2">
-                Gezien de specificaties hanteren we een marge van <strong>±${result.uncertaintyPct}%</strong>.
-             </p>
-             <div class="text-center bg-white rounded py-2 px-3 border border-indigo-100 shadow-sm">
-                <span class="block text-xs text-gray-500">Geschatte bandbreedte</span>
-                <span class="font-bold text-indigo-700 text-lg">
-                    €${result.low.toLocaleString()} – €${result.high.toLocaleString()}
-                </span>
-             </div>
+        <div class="p-3 bg-indigo-50 rounded border border-indigo-100 flex flex-col justify-center">
+          <h4 class="font-semibold mb-1 text-xs uppercase tracking-wide text-indigo-800">3. Betrouwbaarheid</h4>
+          <p class="text-sm text-indigo-900 mb-2">
+            Gezien de specificaties hanteren we een marge van <strong>±${result.uncertaintyPct}%</strong>.
+          </p>
+          <div class="text-center bg-white rounded py-2 px-3 border border-indigo-100 shadow-sm">
+            <span class="block text-xs text-gray-500">Geschatte bandbreedte</span>
+            <span class="font-bold text-indigo-700 text-lg">
+              €${result.low.toLocaleString()} – €${result.high.toLocaleString()}
+            </span>
           </div>
+        </div>
       </div>
 
       <p class="text-xs text-gray-400 mt-2 italic text-center">
-        * Dit model gebruikt een logaritmische schaal voor grootte en corrigeert voor dubbeltelling bij nieuwbouwlabels. 
-        Erfpacht en VvE kosten zijn financiële correcties. Raadpleeg voor een bindende waarde altijd een makelaar.
+        * Dit model is indicatief en gebruikt marktlogica (grootte, bouwjaar, label,
+        onderhoud, buitenruimte, erfpacht en VvE). Voor een bindende taxatie blijft een
+        fysieke opname door een makelaar of taxateur nodig.
       </p>
     </div>
   `;
 
   document.getElementById("user-output").innerHTML = uitlegHtml;
 
-// ⭐ Radar chart activeren
-renderRadarChart(result.breakdown);
-  
-  // Update eventuele side-bar samenvatting
+  // Radar chart updaten (functie komt uit deel 1)
+  if (typeof renderRadarChart === "function") {
+    renderRadarChart(result.breakdown);
+  }
+
+  // Eventuele sidebar-samenvatting
   const sideVal = document.getElementById("ai-valuation");
-  if(sideVal) {
-      sideVal.innerHTML = `
-        <strong>Geschatte Waarde:</strong><br>
-        <span class="text-xl">€${result.price.toLocaleString()}</span><br>
-        <span class="text-xs text-gray-500">€${result.low.toLocaleString()} - €${result.high.toLocaleString()}</span>
-      `;
+  if (sideVal) {
+    sideVal.innerHTML = `
+      <strong>Geschatte waarde:</strong><br>
+      <span class="text-xl">€${result.price.toLocaleString()}</span><br>
+      <span class="text-xs text-gray-500">
+        Bandbreedte: €${result.low.toLocaleString()} – €${result.high.toLocaleString()}
+      </span>
+    `;
   }
 };
+
 /* ---------------------------------------------
-   ADVANCED SECTION TOGGLE
+   15. ADVANCED SECTION TOGGLE
 --------------------------------------------- */
-document.getElementById("toggle-adv").onclick = () => {
-  const box = document.getElementById("adv-fields");
-  const icon = document.getElementById("adv-icon");
+const toggleAdvBtn = document.getElementById("toggle-adv");
+if (toggleAdvBtn) {
+  toggleAdvBtn.onclick = () => {
+    const box  = document.getElementById("adv-fields");
+    const icon = document.getElementById("adv-icon");
 
-  const isHidden = box.classList.contains("hidden");
+    if (!box) return;
 
-  if (isHidden) {
-    box.classList.remove("hidden");
-    icon.textContent = "▲";
-  } else {
-    box.classList.add("hidden");
-    icon.textContent = "▼";
-  }
-};
+    const isHidden = box.classList.contains("hidden");
 
-  </script>
+    if (isHidden) {
+      box.classList.remove("hidden");
+      if (icon) icon.textContent = "▲";
+    } else {
+      box.classList.add("hidden");
+      if (icon) icon.textContent = "▼";
+    }
+  };
+}
+</script>
+
 </body>
 </html>
