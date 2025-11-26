@@ -10,7 +10,7 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 
     <!-- Recharts UMD -->
-    <script src="https://unpkg.com/recharts/umd/Recharts.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.1.9/umd/Recharts.min.js"></script>
 
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -22,10 +22,11 @@
     <script>
         // IMPORTANT: FIX — use window.Recharts (not Recharts)
         const {
-            BarChart, Bar, ScatterChart, Scatter,
-            XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-            ResponsiveContainer, PieChart, Pie, Cell
-        } = window.Recharts;
+    BarChart, Bar, ScatterChart, Scatter,
+    XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+    ResponsiveContainer, PieChart, Pie, Cell
+} = window.Recharts;
+
 
         function BergwegAnalysis() {
             const [activeTab, setActiveTab] = React.useState("overview");
