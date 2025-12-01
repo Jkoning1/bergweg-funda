@@ -348,45 +348,49 @@
   statusEl.innerHTML = "";
 
   try {
-    // ⭐ FIX 2 — GEEN encodeURIComponent + CORS werkt
-    const apiUrl =
-      "https://disguisedly-superparamount-joey.ngrok-free.dev/scrape?url=" + fundaUrl;
+  const apiUrl =
+    "https://disguisedly-superparamount-joey.ngrok-free.dev/scrape?url=" +
+    encodeURIComponent(fundaUrl);
 
-    const res = await fetch(apiUrl);
+  const res = await fetch(apiUrl);
 
-    // ⭐ Check of API wel JSON teruggeeft
-    const text = await res.text();
-    if (text.trim().startsWith("<")) {
-      throw new Error("Server gaf HTML terug i.p.v. JSON");
-    }
+  // --- Tekst ophalen ---
+  const text = await res.text();
 
-    const data = JSON.parse(text);
-
-    loader.classList.add("hidden");
-
-    if (!Array.isArray(data) || data.length === 0) {
-      statusEl.innerHTML = "❌ Geen resultaten gevonden.";
-      return;
-    }
-
-    statusEl.innerHTML = `✅ ${data.length} woningen geladen`;
-
-    window.properties = data.map(p => ({
-      address:  p.address || "Onbekend",
-      price:    Number(String(p.price || "0").replace(/\D+/g, "")) || 0,
-      size:     Number(p.m2 || 0),
-      rooms:    Number(p.bedrooms || 0),
-      label:    p.energy_label || "?",
-      status:   "Actief"
-    }));
-
-    rebuildAllChartsAndTables();
-
-  } catch (err) {
-    loader.classList.add("hidden");
-    statusEl.innerHTML = "❌ Fout bij laden: " + err.message;
+  // --- Proberen JSON te parsen ---
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error("Server gaf HTML terug i.p.v. JSON");
   }
+
+  loader.classList.add("hidden");
+
+  if (!Array.isArray(data) || data.length === 0) {
+    statusEl.innerHTML = "❌ Geen resultaten gevonden.";
+    return;
+  }
+
+  statusEl.innerHTML = `✅ ${data.length} woningen geladen`;
+
+  // Globale properties vullen
+  window.properties = data.map(p => ({
+    address:  p.address || "Onbekend",
+    price:    Number(String(p.price || "0").replace(/\D+/g, "")) || 0,
+    size:     Number(p.m2 || 0),
+    rooms:    Number(p.bedrooms || 0),
+    label:    p.energy_label || "?",
+    status:   "Actief"
+  }));
+
+  rebuildAllChartsAndTables();
+
+} catch (err) {
+  loader.classList.add("hidden");
+  statusEl.innerHTML = "❌ Fout bij laden: " + err.message;
 }
+       }
 
     document.getElementById("btn-scrape").onclick = fetchFundaData;
     
