@@ -26,6 +26,40 @@
         Realtime analyse van <strong>vraagprijzen, m²-prijzen, woningtypes en marktvergelijkingen</strong>.
       </p>
     </div>
+<!-- FUNDA URL SCRAPER BLOK -->
+<div class="bg-white p-6 shadow rounded mb-6">
+
+  <h2 class="text-xl font-semibold mb-3">🔗 Funda URL Import</h2>
+  <p class="text-gray-600 mb-4">
+    Plak hier een Funda zoek-URL om automatisch alle woningen te importeren.
+  </p>
+
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+    <div class="md:col-span-3">
+      <label class="input-label">Funda zoek-URL</label>
+      <input id="funda-url" type="text" class="w-full p-2 border rounded"
+             placeholder="https://www.funda.nl/zoeken/koop?custom_area=....">
+    </div>
+
+    <div class="md:col-span-1">
+      <label class="input-label"> </label>
+      <button id="btn-scrape"
+        class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded font-semibold">
+        Scrape woningen
+      </button>
+    </div>
+  </div>
+
+  <!-- LOADER -->
+  <div id="scrape-loader" class="hidden mt-4 text-gray-600 text-sm">
+    ⏳ Bezig met ophalen... dit kan 3–8 seconden duren.
+  </div>
+
+  <!-- RESULTAAT -->
+  <div id="scrape-status" class="mt-4 text-sm text-blue-700 font-semibold"></div>
+
+</div>
 
     <!-- KPI CARDS -->
     <div id="kpis" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"></div>
@@ -289,489 +323,189 @@
 
 
 
-<script>
-    /* ---------------------------------------------
-       1. Data
-    --------------------------------------------- */
-    const properties = [
-{ address: "Bergweg 365-A02", price: 419000, size: 93, rooms: 2, label: "B", status: "Verkocht" },
-{ address: "Bergweg 143-A", price: 499500, size: 111, rooms: 2, label: "B", status: "Verkocht" },
-{ address: "Bergweg 49-D", price: 450000, size: 135, rooms: 3, label: "B", status: "Verkocht" },
-{ address: "Bergweg 104-H", price: 360000, size: 50, rooms: 1, label: "A+++", status: "Verkocht" },
-{ address: "Bergweg 123-A", price: 650000, size: 146, rooms: 4, label: "B", status: "Verkocht" },
-{ address: "Bergweg 262-A", price: 450000, size: 133, rooms: 6, label: "A", status: "Verkocht" },
-{ address: "Bergweg 55-D", price: 419000, size: 108, rooms: 3, label: "D", status: "Verkocht" },
-{ address: "Bergweg 252", price: 395000, size: 101, rooms: 3, label: "D", status: "Verkocht" },
-{ address: "Bergweg 258-B", price: 300000, size: 95, rooms: 3, label: "F", status: "Verkocht" },
-{ address: "Bergweg 167-B", price: 675000, size: 154, rooms: 3, label: "D", status: "Verkocht" },
-{ address: "Bergweg 114-F", price: 535000, size: 75, rooms: 2, label: "A+++", status: "Verkocht" },
-{ address: "Bergweg 104-J", price: 350000, size: 50, rooms: 1, label: "A+++", status: "Verkocht" },
-{ address: "Bergweg 61-A", price: 409000, size: 107, rooms: 2, label: "C", status: "Verkocht" },
-{ address: "Bergweg 104-T", price: 270000, size: 50, rooms: 1, label: "A++", status: "Verkocht" },
-{ address: "Bergweg 112-F", price: 500000, size: 75, rooms: 2, label: "A+++", status: "Verkocht" },
-{ address: "Bergweg 310", price: 750000, size: 247, rooms: 6, label: "D", status: "Verkocht" },
-{ address: "Bergweg 88-F", price: 325000, size: 75, rooms: 2, label: "A", status: "Onder voorbehoud" },
-{ address: "Bergweg 98-B", price: 625000, size: 114, rooms: 4, label: "A", status: "Onder voorbehoud" },
-{ address: "Bergweg 330-C", price: 425000, size: 140, rooms: 3, label: "D", status: "Verkocht" },
-{ address: "Bergweg 108-J", price: 340000, size: 50, rooms: 1, label: "A+++", status: "Verkocht" },
-{ address: "Bergweg 106-A", price: 495000, size: 71, rooms: 2, label: "A+++", status: "Verkocht" },
-{ address: "Bergweg 106-B", price: 450000, size: 68, rooms: 2, label: "A+++", status: "Verkocht" },
-{ address: "Bergweg 255-A", price: 550000, size: 117, rooms: 2, label: "B", status: "Verkocht" },
-{ address: "Bergweg 236-B", price: 395000, size: 137, rooms: 6, label: "F", status: "Verkocht" },
-{ address: "Bergweg 205-A01 (huis)", price: 795000, size: 265, rooms: 4, label: "?", status: "Beschikbaar" },
-{ address: "Bergweg 205-A01 (app)", price: 352500, size: 61, rooms: 2, label: "A+++", status: "Beschikbaar" },
-{ address: "Bergweg 205-B", price: 699500, size: 128, rooms: 3, label: "A+++", status: "Beschikbaar" },
-{ address: "Bergweg 53-A", price: 500000, size: 108, rooms: 3, label: "C", status: "Onder voorbehoud" },
-{ address: "Bergweg 311-A", price: 329000, size: 67, rooms: 2, label: "B", status: "Onder voorbehoud" },
-{ address: "Bergweg 65-A", price: 475000, size: 110, rooms: 3, label: "E", status: "Onder voorbehoud" },
-{ address: "Bergweg 116-B", price: 450000, size: 77, rooms: 1, label: "A++", status: "Onder voorbehoud" },
-{ address: "Bergweg 253-B", price: 625000, size: 111, rooms: 3, label: "A", status: "Onder bod" },
-{ address: "Bergweg 309-B", price: 499500, size: 112, rooms: 3, label: "A", status: "Verkocht" },
-{ address: "Bergweg 148-A", price: 350000, size: 66, rooms: 1, label: "A", status: "Verkocht" },
-{ address: "Bergweg 153-B", price: 325000, size: 55, rooms: 2, label: "A", status: "Verkocht" },
-{ address: "Bergweg 240-A", price: 499500, size: 91, rooms: 2, label: "D", status: "Verkocht" },
-{ address: "Bergweg 39-D", price: 385000, size: 115, rooms: 5, label: "D", status: "Verkocht" },
-{ address: "Bergweg 155-D", price: 345000, size: 65, rooms: 1, label: "A", status: "Verkocht" },
-{ address: "Bergweg 282-C", price: 350000, size: 80, rooms: 2, label: "C", status: "Verkocht" },
-{ address: "Bergweg 106-C", price: 360000, size: 50, rooms: 1, label: "A++", status: "Verkocht" },
-{ address: "Bergweg 129-a", price: 495000, size: 144, rooms: 3, label: "C", status: "Verkocht" },
-{ address: "Bergweg 47-C", price: 280000, size: 61, rooms: 2, label: "E", status: "Verkocht" },
-{ address: "Bergweg 236-A", price: 499500, size: 117, rooms: 4, label: "A", status: "Verkocht" },
-{ address: "Bergweg 102-B", price: 425000, size: 107, rooms: 3, label: "C", status: "Verkocht" },
-{ address: "Bergweg 162-A", price: 600000, size: 142, rooms: 2, label: "A", status: "Verkocht" },
-{ address: "Bergweg 55-C", price: 315000, size: 59, rooms: 2, label: "B", status: "Verkocht" },
-{ address: "Bergweg 365-A03", price: 425000, size: 102, rooms: 2, label: "C", status: "Actief" },
-{ address: "Bleiswijkstraat 19", price: 400000, size: 75, rooms: 2, label: "A", status: "Actief" },
-{ address: "Vijverhofstraat 175-B01", price: 350000, size: 63, rooms: 2, label: "C", status: "Actief" },
-{ address: "Bergweg 277-B", price: 699000, size: 153, rooms: 4, label: "B", status: "Actief" },
-{ address: "Bergweg 175-C03", price: 450000, size: 81, rooms: 2, label: "E", status: "Actief" },
-{ address: "Schieweg 7-A02", price: 329000, size: 81, rooms: 3, label: "C", status: "Actief" },
-{ address: "Bergweg 233-A", price: 500000, size: 149, rooms: 4, label: "C", status: "Actief" },
-{ address: "Noordsingel 139", price: 600000, size: 160, rooms: 2, label: "D", status: "Actief" },
-{ address: "Bergselaan 15-A", price: 479000, size: 97, rooms: 2, label: "C", status: "Actief" },
-{ address: "Bergweg 219", price: 2000000, size: 460, rooms: 14, label: "?", status: "Actief" },
-{ address: "Bergweg 99-b", price: 700000, size: 203, rooms: 6, label: "E", status: "Actief" },
-{ address: "Agniesestraat 136-b", price: 550000, size: 124, rooms: 3, label: "C", status: "Actief" },
-{ address: "Schiebroeksestraat 10", price: 650000, size: 164, rooms: 4, label: "C", status: "Actief" },
-{ address: "Blommersdijkselaan 38-A", price: 675000, size: 134, rooms: 4, label: "D", status: "Actief" },
-{ address: "Heer Vrankestraat 15", price: 825000, size: 175, rooms: 4, label: "A++", status: "Actief" },
-{ address: "Willebrordusplein 9-A", price: 650000, size: 110, rooms: 2, label: "A", status: "Actief" },
-{ address: "Soetendaalseweg 11", price: 700000, size: 152, rooms: 3, label: "A+++", status: "Actief" },
-{ address: "Schiekade 4-B", price: 1350000, size: 385, rooms: 4, label: "C", status: "Actief" },
-{ address: "Blommersdijkselaan 13-A", price: 575000, size: 118, rooms: 2, label: "A", status: "Actief" },
-{ address: "Willebrordusstraat 66", price: 450000, size: 86, rooms: 2, label: "A", status: "Actief" },
-{ address: "Van den Hoonaardstraat 18-A", price: 650000, size: 119, rooms: 3, label: "A+", status: "Actief" },
-{ address: "Van den Hoonaardstraat 18-B", price: 600000, size: 116, rooms: 2, label: "A", status: "Actief" },
-{ address: "Bergweg 239-A", price: 550000, size: 150, rooms: 4, label: "C", status: "Actief" },
-{ address: "Bergweg 324-B", price: 585000, size: 153, rooms: 3, label: "E", status: "Actief" },
-{ address: "Bergweg 250-A", price: 650000, size: 133, rooms: 3, label: "A", status: "Actief" },
-{ address: "Rodenrijselaan 62-A02", price: 495000, size: 118, rooms: 3, label: "A", status: "Actief" },
-{ address: "Bergweg 108-M", price: 525000, size: 75, rooms: 2, label: "A+++", status: "Actief" },
-{ address: "Insulindestraat 289-A", price: 725000, size: 149, rooms: 2, label: "D", status: "Actief" },
-{ address: "Soetendaalseweg 62-B01", price: 309500, size: 55, rooms: 2, label: "C", status: "Actief" },
-{ address: "Rodenrijselaan 14-B", price: 400000, size: 130, rooms: 5, label: "E", status: "Actief" },
-{ address: "Bergstraat 30-A", price: 450000, size: 93, rooms: 5, label: "B", status: "Actief" },
-{ address: "Blommersdijkselaan 30-B", price: 599000, size: 110, rooms: 4, label: "A", status: "Actief" },
-{ address: "Bergweg 253-A", price: 675000, size: 116, rooms: 3, label: "A", status: "Actief" },
-{ address: "Gordelweg 55-C", price: 275000, size: 55, rooms: 1, label: "D", status: "Verkocht" },
-{ address: "Rodenrijselaan 64-A02", price: 317500, size: 71, rooms: 1, label: "A", status: "Verkocht" },
-{ address: "Bergselaan 154-B", price: 650000, size: 133, rooms: 4, label: "D", status: "Verkocht" },
-{ address: "Blommersdijkselaan 9-A", price: 575000, size: 161, rooms: 5, label: "E", status: "Verkocht" },
-{ address: "Blommersdijkselaan 7-A", price: 575000, size: 161, rooms: 4, label: "E", status: "Verkocht" },
-{ address: "Gordelweg 52-C", price: 500000, size: 116, rooms: 3, label: "D", status: "Verkocht" },
-{ address: "Bergselaan 148", price: 1195000, size: 253, rooms: 6, label: "A", status: "Verkocht" },
-{ address: "Rodenrijselaan 64-A01", price: 325000, size: 71, rooms: 1, label: "A", status: "Verkocht" },
-{ address: "Sint-Agathastraat 8-B", price: 375000, size: 70, rooms: 2, label: "C", status: "Verkocht" },
-{ address: "Lisstraat 40-A", price: 625000, size: 110, rooms: 3, label: "A", status: "Verkocht" },
-{ address: "Benthuizerstraat 60-G", price: 275000, size: 52, rooms: 1, label: "D", status: "Verkocht" },
-{ address: "Willebrordusstraat 28-A", price: 485000, size: 98, rooms: 3, label: "C", status: "Verkocht" },
-{ address: "Banierstraat 27-C02", price: 360000, size: 69, rooms: 1, label: "C", status: "Verkocht" },
-{ address: "Bergselaan 192-A", price: 537000, size: 118, rooms: 3, label: "C", status: "Verkocht" },
-{ address: "Bergselaan 54-B", price: 345000, size: 59, rooms: 1, label: "C", status: "Verkocht" },
-{ address: "Bergselaan 136-B", price: 695000, size: 150, rooms: 4, label: "B", status: "Verkocht" },
-{ address: "Gordelweg 35-D", price: 309000, size: 61, rooms: 1, label: "E", status: "Verkocht" },
-{ address: "Noordsingel 153-A", price: 419500, size: 78, rooms: 2, label: "A", status: "Verkocht" },
-{ address: "Willebrordusstraat 18", price: 695000, size: 202, rooms: 2, label: "C", status: "Verkocht" },
-{ address: "Schiekade 440", price: 399000, size: 84, rooms: 2, label: "A+", status: "Verkocht" },
-{ address: "Voorburgstraat 244", price: 450000, size: 93, rooms: 2, label: "B", status: "Verkocht" },
-{ address: "Bergselaan 74-B", price: 489500, size: 119, rooms: 3, label: "D", status: "Verkocht" },
-{ address: "Bergselaan 206-A", price: 900000, size: 202, rooms: 5, label: "C", status: "Verkocht" },
-{ address: "Schout Heynricstraat 60", price: 400000, size: 94, rooms: 4, label: "B", status: "Verkocht" },
-{ address: "Sint-Agathastraat 58-A", price: 565000, size: 110, rooms: 4, label: "B", status: "Verkocht" },
-{ address: "Benthuizerstraat 60-B", price: 300000, size: 59, rooms: 2, label: "C", status: "Verkocht" },
-{ address: "Gordelweg 23-D", price: 315000, size: 63, rooms: 1, label: "E", status: "Verkocht" },
-{ address: "Schiekade 42-B", price: 449000, size: 122, rooms: 2, label: "C", status: "Verkocht" },
-{ address: "Van den Hoonaardstraat 25-A", price: 400000, size: 97, rooms: 4, label: "B", status: "Verkocht" },
-{ address: "Zestienhovenstraat 34", price: 700000, size: 149, rooms: 4, label: "C", status: "Verkocht" },
-{ address: "Bergselaan 174-A", price: 750000, size: 131, rooms: 4, label: "B", status: "Verkocht" },
-{ address: "Bleiswijkstraat 105-A", price: 319500, size: 55, rooms: 1, label: "A", status: "Verkocht" },
-{ address: "Schout Heynricstraat 44", price: 445000, size: 89, rooms: 3, label: "C", status: "Verkocht" },
-{ address: "Bleiswijkstraat 105-B", price: 365000, size: 56, rooms: 1, label: "A", status: "Verkocht" },
-{ address: "Zestienhovenstraat 36", price: 700000, size: 135, rooms: 5, label: "A", status: "Verkocht" },
-{ address: "Sint-Agathastraat 21-B", price: 795000, size: 182, rooms: 3, label: "A", status: "Verkocht" },
-{ address: "Gerard Scholtenstraat 110-B", price: 315000, size: 48, rooms: 1, label: "A", status: "Verkocht" },
-{ address: "Bergselaan 32-C", price: 380000, size: 95, rooms: 5, label: "C", status: "Verkocht" },
-{ address: "Sint-Agathastraat 19-A", price: 765000, size: 153, rooms: 3, label: "A", status: "Verkocht" },
-{ address: "Van den Hoonaardstraat 14-C", price: 329000, size: 54, rooms: 2, label: "D", status: "Verkocht" },
-{ address: "Soetendaalseweg 89-A", price: 575000, size: 108, rooms: 3, label: "A", status: "Verkocht" },
-{ address: "Vijverhofstraat 181", price: 575000, size: 121, rooms: 4, label: "D", status: "Verkocht" },
-{ address: "Gordelweg 66-C", price: 460000, size: 116, rooms: 1, label: "C", status: "Verkocht" },
-{ address: "Bergstraat 11-A", price: 350000, size: 92, rooms: 3, label: "D", status: "Verkocht" },
-{ address: "Van den Hoonaardstraat 8", price: 695000, size: 192, rooms: 5, label: "E", status: "Verkocht" },
-{ address: "Rodenrijselaan 62-B", price: 479500, size: 112, rooms: 1, label: "C", status: "Verkocht" },
-{ address: "Schout Heynricstraat 78", price: 475000, size: 90, rooms: 3, label: "C", status: "Verkocht" },
-{ address: "Bleiswijkstraat 67", price: 389000, size: 75, rooms: 2, label: "C", status: "Verkocht" },
-{ address: "Schieveenstraat 13-A", price: 595000, size: 144, rooms: 2, label: "C", status: "Verkocht" },
-{ address: "Bergstraat 11-C", price: 350000, size: 76, rooms: 4, label: "D", status: "Verkocht" },
-{ address: "Schiebroekselaan 60-B", price: 550000, size: 120, rooms: 3, label: "D", status: "Verkocht" },
-{ address: "Gerard Scholtenstraat 112-A", price: 650000, size: 134, rooms: 3, label: "G", status: "Verkocht" },
-{ address: "Koningsveldestraat 9-B", price: 550000, size: 101, rooms: 3, label: "D", status: "Verkocht" },
-{ address: "Blommersdijkselaan 36", price: 1195000, size: 250, rooms: 5, label: "B", status: "Verkocht" },
-{ address: "Rodenrijselaan 27-A", price: 635000, size: 156, rooms: 4, label: "D", status: "Verkocht" },
-{ address: "Willebrordusplein 7-B", price: 235000, size: 53, rooms: 1, label: "G", status: "Verkocht" },
-{ address: "Willebrordusstraat 81-B02", price: 295000, size: 101, rooms: 3, label: "C", status: "Verkocht" },
-{ address: "Gordelweg 63-C", price: 325000, size: 55, rooms: 1, label: "D", status: "Verkocht" },
-{ address: "Bergweg 307-A", price: 450000, size: 79, rooms: 2, label: "A", status: "Onder voorbehoud" },
-{ address: "doctor Hekmanstraat 8", price: 395000, size: 77, rooms: 2, label: "A", status: "Verkocht" },
-{ address: "Schieveenstraat 46", price: 695000, size: 160, rooms: 4, label: "C", status: "Verkocht" },
-{ address: "Bergselaan 150", price: 1125000, size: 257, rooms: 5, label: "A", status: "Verkocht" },
-{ address: "Heer Vrankestraat 25-A", price: 699000, size: 129, rooms: 4, label: "A", status: "Verkocht" },
-{ address: "Hooglandstraat 190", price: 395000, size: 58, rooms: 2, label: "A", status: "Actief" },
-{ address: "Zwart Janstraat 126-A", price: 400000, size: 127, rooms: 4, label: "D", status: "Actief" },
-{ address: "Van den Hoonaardstraat 22-B", price: 435000, size: 105, rooms: 2, label: "D", status: "Verkocht" },
-{ address: "Bergsingel 208-A", price: 650000, size: 115, rooms: 3, label: "D", status: "Verkocht" },
-{ address: "Bergselaan 13-B", price: 395000, size: 70, rooms: 1, label: "B", status: "Verkocht" },
-{ address: "Rodenrijselaan 43-B02", price: 500000, size: 168, rooms: 4, label: "G", status: "Verkocht" },
-{ address: "Bergselaan 166-A", price: 675000, size: 133, rooms: 3, label: "C", status: "Verkocht" },
-{ address: "Van den Hoonaardstraat 15-B", price: 465000, size: 117, rooms: 2, label: "D", status: "Verkocht" },
-{ address: "Noordsingel 185-J", price: 925000, size: 143, rooms: 3, label: "A", status: "Verkocht" },
-{ address: "Bergselaan 36-D", price: 365000, size: 65, rooms: 1, label: "C", status: "Verkocht" },
-{ address: "Willebrordusplein 17-A", price: 475000, size: 107, rooms: 2, label: "C", status: "Verkocht" },
-{ address: "Lisstraat 51-A", price: 569000, size: 113, rooms: 3, label: "C", status: "Verkocht" },
-{ address: "Benthuizerstraat 8-A", price: 399000, size: 85, rooms: 3, label: "?", status: "Verkocht" },
-{ address: "Rodenrijselaan 64-B", price: 475000, size: 132, rooms: 3, label: "A", status: "Verkocht" },
-{ address: "Schiekade 14-M", price: 350000, size: 71, rooms: 1, label: "?", status: "Verkocht" },
-{ address: "Sint-Agathastraat 8-A", price: 425000, size: 75, rooms: 2, label: "C", status: "Onder voorbehoud" },
-{ address: "Schiekade 504", price: 465000, size: 86, rooms: 2, label: "A", status: "Onder voorbehoud" },
-{ address: "Bloklandstraat 155-B", price: 395000, size: 107, rooms: 2, label: "E", status: "Onder voorbehoud" },
-{ address: "Zestienhovenstraat 21", price: 650000, size: 138, rooms: 5, label: "A+", status: "Verkocht" },
-{ address: "Bergweg 205-A01", price: 795000, size: 265, rooms: 4, label: "?", status: "Verkocht" },
-{ address: "Bergweg 205-A02", price: 392750, size: 69, rooms: 2, label: "A+++", status: "Verkocht" },
-{ address: "Bergweg 205-A01", price: 352500, size: 61, rooms: 2, label: "A+++", status: "Verkocht" },
-{ address: "Bergweg 205-B", price: 699500, size: 128, rooms: 3, label: "A+++", status: "Verkocht" },
-{ address: "Van den Hoonaardstraat 21-B", price: 435000, size: 100, rooms: 3, label: "E", status: "Verkocht" },
-{ address: "Schiekade 492", price: 265000, size: 105, rooms: 2, label: "?", status: "Verkocht" },
-{ address: "Bergselaan 30-D", price: 310000, size: 82, rooms: 2, label: "E", status: "Actief" },
-{ address: "Willebrordusplein 13-K", price: 489000, size: 73, rooms: 2, label: "?", status: "Actief" },
-{ address: "Willebrordusplein 13-G", price: 499500, size: 73, rooms: 2, label: "?", status: "Actief" },
-{ address: "Willebrordusplein 13-E", price: 489000, size: 73, rooms: 2, label: "?", status: "Actief" },
-{ address: "Willebrordusplein 13-D", price: 489000, size: 73, rooms: 2, label: "?", status: "Actief" },
-{ address: "Soetendaalseweg 107", price: 770000, size: 110, rooms: 3, label: "A+++", status: "Actief" },
-{ address: "Soetendaalseweg 109", price: 770000, size: 110, rooms: 3, label: "A+++", status: "Actief" },
-{ address: "Bergweg 72", price: 672000, size: 96, rooms: 3, label: "A+++", status: "Actief" },
-{ address: "Insulindestraat 283-A03", price: 475000, size: 68, rooms: 2, label: "A++", status: "Actief" },
-{ address: "Schiekade 14-l", price: 450000, size: 94, rooms: 2, label: "B", status: "Actief" },
-{ address: "Insulindestraat 283-A01", price: 375000, size: 51, rooms: 1, label: "A++", status: "Actief" },
-{ address: "Soetendaalseweg 111", price: 763000, size: 109, rooms: 3, label: "?", status: "Actief" },
-{ address: "Woning F (Bouwnr. F1)", price: 450000, size: 75, rooms: 3, label: "A++++", status: "Nieuwbouw" },
-{ address: "Woning E (Bouwnr. E1)", price: 770000, size: 110, rooms: 3, label: "A++++", status: "Nieuwbouw" },
-{ address: "Woning D (Bouwnr. D1)", price: 770000, size: 110, rooms: 3, label: "A++++", status: "Nieuwbouw" },
-{ address: "Woning C (Bouwnr. C1)", price: 763000, size: 109, rooms: 3, label: "A++++", status: "Nieuwbouw" },
-{ address: "Willebrordusstraat 102-A", price: 450000, size: 168, rooms: 4, label: "?", status: "Verkocht" },
-{ address: "Insulindestraat 256-Z", price: 571500, size: 78, rooms: 3, label: "A+++", status: "Verkocht" },
-{ address: "Woning A (Bouwnr. 1)", price: 672000, size: 96, rooms: 3, label: "A++++", status: "Nieuwbouw" },
-{ address: "Hoyledestraat (Bouwnr. 41e)", price: 319500, size: 44, rooms: 1, label: "B", status: "Verkocht" },
-{ address: "Hoyledestraat (Bouwnr. 41a)", price: 339500, size: 45, rooms: 1, label: "B", status: "Verkocht" },
-{ address: "Hoyledestraat 41d", price: 289500, size: 39, rooms: 1, label: "B", status: "Verkocht" },
-{ address: "Hoyledestraat (Bouwnr. 41c)", price: 249500, size: 35, rooms: 1, label: "B", status: "Verkocht" },
-{ address: "Hoyledestraat (Bouwnr. 37)", price: 225000, size: 41, rooms: 1, label: "B", status: "Verkocht" },
-{ address: "Hoyledestraat (Bouwnr. 41b)", price: 247500, size: 32, rooms: 1, label: "B", status: "Verkocht" },
-{ address: "Hoyledestraat 41", price: 330000, size: 70, rooms: 2, label: "?", status: "Verkocht" },
-{ address: "Hoyledestraat 35", price: 635000, size: 144, rooms: 4, label: "?", status: "Verkocht" },
-{ address: "Soetendaalseweg (Bouwnr. 99A)", price: 489500, size: 71, rooms: 2, label: "B", status: "Verkocht" },
-{ address: "Soetendaalseweg 99-C", price: 565000, size: 85, rooms: 2, label: "?", status: "Verkocht" },
-{ address: "Schiekade 46-F", price: 200000, size: 25, rooms: 1, label: "A", status: "Onder voorbehoud" },
-{ address: "Rodenrijselaan 9-A03", price: 350000, size: 62, rooms: 1, label: "E", status: "Onder voorbehoud" },
-{ address: "Benthuizerstraat 32-A", price: 375000, size: 101, rooms: 2, label: "D", status: "Onder voorbehoud" },
-{ address: "Noordsingel 159-C", price: 395000, size: 76, rooms: 2, label: "B", status: "Onder voorbehoud" },
-{ address: "Bergselaan 130-A", price: 750000, size: 136, rooms: 3, label: "C", status: "Onder voorbehoud" },
-];
-
-
-
-/* ---------------------------------------------
-   2. PREPROCESSING & BASISSTATISTIEKEN
---------------------------------------------- */
-const propsWithM2 = properties
-  .filter(p => p.size > 0)
-  .map(p => ({
-    ...p,
-    pricePerM2: Math.round(p.price / p.size)
-  }));
-
-const avg = arr =>
-  arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : 0;
-
-const avgM2    = avg(propsWithM2.map(p => p.pricePerM2));
-const avgPrice = avg(propsWithM2.map(p => p.price));
-const avgSize  = avg(propsWithM2.map(p => p.size));
-
-const maxM2 = Math.max(...propsWithM2.map(p => p.pricePerM2));
-const minM2 = Math.min(...propsWithM2.map(p => p.pricePerM2));
-
-/* ---------------------------------------------
-   Extra statistieken
---------------------------------------------- */
-const soldCount = properties.filter(p => p.status === "Verkocht").length;
-const soldPct   = Math.round((soldCount / properties.length) * 100);
-
-const AplusCount = properties.filter(p => p.label && p.label.startsWith("A")).length;
-const AplusPct   = Math.round((AplusCount / properties.length) * 100);
-
-/* ---------------------------------------------
-   m² Ranges
---------------------------------------------- */
-const m2Ranges = [
-  { range: "€3.000–€4.000", min: 3000, max: 4000, count: 0 },
-  { range: "€4.000–€5.000", min: 4000, max: 5000, count: 0 },
-  { range: "€5.000–€6.000", min: 5000, max: 6000, count: 0 },
-  { range: "€6.000–€7.000", min: 6000, max: 7000, count: 0 },
-  { range: "€7.000+",      min: 7000, max: 20000, count: 0 }
-];
-
-propsWithM2.forEach(p => {
-  const r = m2Ranges.find(x => p.pricePerM2 >= x.min && p.pricePerM2 < x.max);
-  if (r) r.count++;
-});
-
-/* ---------------------------------------------
-   3. KPI's
---------------------------------------------- */
-document.getElementById("kpis").innerHTML = `
-  <div class="bg-white p-6 shadow rounded">
-    <p class="text-sm text-gray-600">Gemiddelde prijs/m²</p>
-    <p class="text-2xl font-bold text-blue-600">€${avgM2.toLocaleString()}</p>
-  </div>
-  <div class="bg-white p-6 shadow rounded">
-    <p class="text-sm text-gray-600">Gemiddelde prijs</p>
-    <p class="text-2xl font-bold text-green-600">€${avgPrice.toLocaleString()}</p>
-  </div>
-  <div class="bg-white p-6 shadow rounded">
-    <p class="text-sm text-gray-600">Gem. oppervlakte</p>
-    <p class="text-2xl font-bold text-purple-600">${avgSize} m²</p>
-  </div>
-`;
-
-/* ---------------------------------------------
-   4. INSIGHTS
---------------------------------------------- */
-const addInsight = txt => {
-  const ul = document.getElementById("insights");
-  const li = document.createElement("li");
-  li.className = "flex items-start";
-  li.innerHTML = `<span class='text-blue-500 mr-2'>•</span>${txt}`;
-  ul.appendChild(li);
-};
-
-addInsight(`Gemiddelde prijs per m²: <strong>€${avgM2.toLocaleString()}</strong>.`);
-addInsight(`${soldPct}% van alle woningen is verkocht (${soldCount} van de ${properties.length}).`);
-addInsight(`Laagste m²-prijs: €${minM2.toLocaleString()} – hoogste €${maxM2.toLocaleString()}.`);
-addInsight(`Energielabel A of hoger: ${AplusPct}% van alle woningen.`);
-
-/* ---------------------------------------------
-   5. DETAILS TABEL
---------------------------------------------- */
-const tableBody = document.getElementById("table-body");
-
-propsWithM2
-  .slice()
-  .sort((a, b) => b.pricePerM2 - a.pricePerM2)
-  .forEach(p => {
-    tableBody.innerHTML += `
-      <tr class="border-b">
-        <td class="px-4 py-2">${p.address}</td>
-        <td class="px-4 py-2">€${p.price.toLocaleString()}</td>
-        <td class="px-4 py-2">${p.size}</td>
-        <td class="px-4 py-2 text-blue-600 font-bold">€${p.pricePerM2.toLocaleString()}</td>
-        <td class="px-4 py-2">${p.status}</td>
-      </tr>`;
-  });
-
-/* ---------------------------------------------
-   6. GRAFIEK 1 – Bar: m² verdeling
---------------------------------------------- */
-new Chart(document.getElementById("chart-m2ranges"), {
-  type: "bar",
-  data: {
-    labels: m2Ranges.map(r => r.range),
-    datasets: [{
-      data: m2Ranges.map(r => r.count),
-      backgroundColor: "#3b82f6"
-    }]
-  },
-  options: {
-    responsive: true,
-    plugins: { legend: { display: false } },
-    scales: { y: { beginAtZero: true } }
-  }
-});
-
-/* ---------------------------------------------
-   7. GRAFIEK 2 – HEATMAP (kamers vs m²)
---------------------------------------------- */
-const heatmapMatrix = {};
-propsWithM2.forEach(p => {
-  if (!heatmapMatrix[p.rooms]) heatmapMatrix[p.rooms] = [];
-  heatmapMatrix[p.rooms].push(p.pricePerM2);
-});
-
-const heatmapLabels = Object.keys(heatmapMatrix).sort((a, b) => a - b);
-const heatmapValues = heatmapLabels.map(r => avg(heatmapMatrix[r]));
-
-const heatColors = heatmapValues.map(v => {
-  const ratio = (v - minM2) / (maxM2 - minM2 || 1);
-  return `rgb(${Math.round(255 * ratio)}, ${Math.round(255 * (1 - ratio))}, 80)`;
-});
-
-new Chart(document.getElementById("chart-heatmap"), {
-  type: "bar",
-  data: {
-    labels: heatmapLabels.map(l => `${l} kamers`),
-    datasets: [{
-      data: heatmapValues,
-      backgroundColor: heatColors
-    }]
-  },
-  options: {
-    plugins: { legend: { display: false } },
-    scales: { y: { beginAtZero: false } }
-  }
-});
-
-/* ---------------------------------------------
-   8. GRAFIEK 3 – Energielabels
---------------------------------------------- */
-const labelGroups = {};
-propsWithM2.forEach(p => {
-  if (!p.label || p.label === "?") return;
-  if (!labelGroups[p.label]) labelGroups[p.label] = [];
-  labelGroups[p.label].push(p.pricePerM2);
-});
-
-const labelNames = Object.keys(labelGroups).sort();
-const labelAvg = labelNames.map(l => avg(labelGroups[l]));
-
-new Chart(document.getElementById("chart-labels"), {
-  type: "bar",
-  data: {
-    labels: labelNames,
-    datasets: [{
-      data: labelAvg,
-      backgroundColor: "#10b981"
-    }]
-  },
-  options: {
-    plugins: { legend: { display: false } },
-    scales: { y: { beginAtZero: false } }
-  }
-});
-
-/* ---------------------------------------------
-   9. GRAFIEK 4 – TREND
---------------------------------------------- */
-const months = ["Jan", "Feb", "Mrt", "Apr", "Mei", "Jun", "Jul", "Aug", "Sep"];
-const trendData = months.map(() =>
-  avgPrice * (0.95 + Math.random() * 0.1)
-);
-
-new Chart(document.getElementById("chart-trend"), {
-  type: "line",
-  data: {
-    labels: months,
-    datasets: [{
-      data: trendData,
-      borderColor: "#3b82f6",
-      tension: 0.4
-    }]
-  },
-  options: {
-    plugins: { legend: { display: false } },
-    scales: {
-      y: {
-        ticks: {
-          callback: value => "€" + (value / 1000).toFixed(0) + "k"
+  <script>
+    /* =========================================================================
+       1. FUNDA SCRAPER – API AANROEP (Render.com)
+       ========================================================================= */
+    
+    async function fetchFundaData() {
+      const urlInput = document.getElementById("funda-url");
+      const loader   = document.getElementById("scrape-loader");
+      const statusEl = document.getElementById("scrape-status");
+    
+      const fundaUrl = urlInput.value.trim();
+      if (!fundaUrl) {
+        alert("Voer een geldige Funda URL in.");
+        return;
+      }
+    
+      loader.classList.remove("hidden");
+      statusEl.innerHTML = "";
+    
+      try {
+        const apiUrl = "https://scraper-api-wxfu.onrender.com/scrape?url=" + encodeURIComponent(fundaUrl);
+        const res = await fetch(apiUrl);
+    
+        if (!res.ok) throw new Error("API error: " + res.status);
+    
+        const data = await res.json();
+        loader.classList.add("hidden");
+    
+        if (!Array.isArray(data) || data.length === 0) {
+          statusEl.innerHTML = "❌ Geen resultaten gevonden.";
+          return;
         }
+    
+        statusEl.innerHTML = `✅ ${data.length} woningen geladen`;
+    
+        // Globale properties vullen met nette waarden
+        window.properties = data.map(p => ({
+          address:  p.address || "Onbekend",
+          price:    Number(String(p.price || "0").replace(/\D+/g, "")) || 0,
+          size:     Number(p.m2 || 0),
+          rooms:    Number(p.bedrooms || 0),
+          label:    p.energy_label || "?",
+          status:   "Actief"
+        }));
+    
+        // UI opnieuw opbouwen
+        rebuildAllChartsAndTables();
+    
+      } catch (err) {
+        loader.classList.add("hidden");
+        statusEl.innerHTML = "❌ Fout bij laden: " + err.message;
       }
     }
-  }
-});
-
-/* ---------------------------------------------
-   10. SCATTER – VOOR JOUW WONING
---------------------------------------------- */
-let scatterChart;
-
-function buildScatter(highlight = null) {
-  if (scatterChart) scatterChart.destroy();
-
-  const allPoints = propsWithM2.map(p => ({
-    x: p.size,
-    y: p.price,
-    address: p.address
-  }));
-
-  const datasets = [{
-    label: "Overige woningen",
-    data: allPoints,
-    pointRadius: 5,
-    backgroundColor: "#8884d8"
-  }];
-
-  if (highlight) {
-    datasets.push({
-      label: "Jouw woning",
-      data: [highlight],
-      pointRadius: 9,
-      backgroundColor: "red"
-    });
-  }
-
-  scatterChart = new Chart(
-    document.getElementById("chart-scatter"),
-    {
-      type: "scatter",
-      data: { datasets },
-      options: {
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label: ctx => {
-                const d = ctx.raw;
-                return `${d.address || "Jouw woning"}: ${d.x} m² – €${d.y.toLocaleString()}`;
+    
+    document.getElementById("btn-scrape").onclick = fetchFundaData;
+    
+    
+    /* =========================================================================
+       2. GLOBALE DATA-CONTAINER (LEEG BIJ START)
+       ========================================================================= */
+    let properties = [];   // pas gevuld NA scraping → goed!
+    
+    
+    /* =========================================================================
+       3. HELPER FUNCTIES
+       ========================================================================= */
+    
+    function calcAvg(arr) {
+      return arr.length ? Math.round(arr.reduce((s,v)=>s+v,0) / arr.length) : 0;
+    }
+    
+    function buildScatter(highlight = null) {
+      if (window.chartScatter) window.chartScatter.destroy();
+    
+      const propsWithM2 = properties
+        .filter(p => p.size > 0)
+        .map(p => ({ ...p, pricePerM2: Math.round(p.price / p.size) }));
+    
+      const points = propsWithM2.map(p => ({
+        x: p.size,
+        y: p.price,
+        address: p.address
+      }));
+    
+      const datasets = [{
+        label: "Overige woningen",
+        data: points,
+        pointRadius: 5,
+        backgroundColor: "#8884d8"
+      }];
+    
+      if (highlight) {
+        datasets.push({
+          label: "Jouw woning",
+          data: [highlight],
+          pointRadius: 9,
+          backgroundColor: "red"
+        });
+      }
+    
+      window.chartScatter = new Chart(
+        document.getElementById("chart-scatter"),
+        {
+          type: "scatter",
+          data: { datasets },
+          options: {
+            plugins: {
+              tooltip: {
+                callbacks: {
+                  label: ctx => {
+                    const d = ctx.raw;
+                    return `${d.address || "Jouw woning"}: ${d.x} m² – €${d.y.toLocaleString()}`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: { title: { display: true, text: "Oppervlakte (m²)" }},
+              y: {
+                title: { display: true, text: "Prijs (€)" },
+                ticks: {
+                  callback: value => "€" + (value / 1000).toFixed(0) + "k"
+                }
               }
             }
           }
-        },
-        scales: {
-          x: { title: { display: true, text: "Oppervlakte (m²)" } },
-          y: {
-            title: { display: true, text: "Prijs (€)" },
-            ticks: {
-              callback: value => "€" + (value / 1000).toFixed(0) + "k"
-            }
-          }
         }
-      }
+      );
     }
-  );
+  
+/* =========================================================================
+   4. ADVANCED SECTION TOGGLE
+   ========================================================================= */
+
+const toggleAdvBtn = document.getElementById("toggle-adv");
+if (toggleAdvBtn) {
+  toggleAdvBtn.onclick = () => {
+    const box  = document.getElementById("adv-fields");
+    const icon = document.getElementById("adv-icon");
+
+    if (!box) return;
+
+    const isHidden = box.classList.contains("hidden");
+
+    if (isHidden) {
+      box.classList.remove("hidden");
+      if (icon) icon.textContent = "▲";
+    } else {
+      box.classList.add("hidden");
+      if (icon) icon.textContent = "▼";
+    }
+  };
 }
 
-// Eerste render
-buildScatter();
 
-/* ---------------------------------------------
-   11. RADAR CHART – voorbereid (render functie)
---------------------------------------------- */
+/* =========================================================================
+   5. TAB SWITCHING
+   ========================================================================= */
+
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.onclick = () => {
+    const tab = btn.dataset.tab;
+
+    document.querySelectorAll(".tab-btn").forEach(b => {
+      b.classList.remove("border-blue-600", "text-blue-600", "border-b-2");
+      b.classList.add("text-gray-600");
+    });
+
+    btn.classList.add("border-b-2", "border-blue-600", "text-blue-600");
+
+    document.querySelectorAll("[id^='tab-']").forEach(div =>
+      div.classList.add("hidden")
+    );
+
+    document.getElementById("tab-" + tab).classList.remove("hidden");
+  };
+});
+
+
+/* =========================================================================
+   6. RADAR CHART (bij waarderingsmodel)
+   ========================================================================= */
+
 let radarChart;
 
 function renderRadarChart(breakdown) {
@@ -797,13 +531,13 @@ function renderRadarChart(breakdown) {
       datasets: [{
         data: deltas,
         fill: true,
-        backgroundColor: "rgba(37, 99, 235, 0.2)",
+        backgroundColor: "rgba(37, 99, 235, 0.25)",
         borderColor: "rgba(37, 99, 235, 1)",
         pointBackgroundColor: "rgba(37, 99, 235, 1)"
       }]
     },
     options: {
-      plugins: { legend: { display: false } },
+      plugins: { legend: { display: false }},
       scales: {
         r: {
           ticks: {
@@ -816,34 +550,11 @@ function renderRadarChart(breakdown) {
   });
 }
 
-/* ---------------------------------------------
-   12. TAB SWITCHING
---------------------------------------------- */
-document.querySelectorAll(".tab-btn").forEach(btn => {
-  btn.onclick = () => {
-    const tab = btn.dataset.tab;
 
-    document.querySelectorAll(".tab-btn").forEach(b => {
-      b.classList.remove("border-blue-600", "text-blue-600", "border-b-2");
-      b.classList.add("text-gray-600");
-    });
+/* =========================================================================
+   7. AI TAXATIEMODEL – High precision waardering
+   ========================================================================= */
 
-    btn.classList.add("border-b-2", "border-blue-600", "text-blue-600");
-
-    document.querySelectorAll("[id^='tab-']").forEach(div =>
-      div.classList.add("hidden")
-    );
-
-    document.getElementById("tab-" + tab).classList.remove("hidden");
-  };
-});
-
-
-
-/* ---------------------------------------------
-   13. GEAVANCEERD WAARDERINGSMODEL – AI TAXATIE
-   (maakt gebruik van avgM2 uit deel 1)
---------------------------------------------- */
 function calculateValueDetailed({
   size,
   rooms,
@@ -855,16 +566,12 @@ function calculateValueDetailed({
   buitenruimte,
   woningType
 }) {
+
   const breakdown = [];
 
-  /* ------------------------------------------
-     0. STARTWAARDE — buurtgemiddelde m²-prijs
-  ------------------------------------------ */
+  /* ---------- 1. START ---------- */
   let currentM2 = avgM2;
-  if (!currentM2 || !isFinite(currentM2)) {
-    // Fallback als er (nog) geen data is
-    currentM2 = 4000;
-  }
+  if (!currentM2 || !isFinite(currentM2)) currentM2 = 4000;
 
   breakdown.push({
     stap: "Startwaarde (buurtgemiddelde)",
@@ -872,9 +579,7 @@ function calculateValueDetailed({
     waarde: Math.round(currentM2)
   });
 
-  /* ------------------------------------------
-     1. WONINGTYPE – lichte correctie
-  ------------------------------------------ */
+  /* ---------- 2. WONINGTYPE ---------- */
   const typeFactors = {
     "appartement": 0.97,
     "benedenwoning": 1.00,
@@ -896,9 +601,7 @@ function calculateValueDetailed({
     });
   }
 
-  /* ------------------------------------------
-     2. GROOTTE-EFFECT (logaritmisch)
-  ------------------------------------------ */
+  /* ---------- 3. GROOTTE-EFFECT ---------- */
   const refSize = 85;
   const sizeFactor = Math.pow((refSize / size), 0.15);
 
@@ -909,9 +612,7 @@ function calculateValueDetailed({
     waarde: Math.round(currentM2)
   });
 
-  /* ------------------------------------------
-     3. BOUWJAAR & LABEL (interactie)
-  ------------------------------------------ */
+  /* ---------- 4. BOUWJAAR ---------- */
   let fYear = 1;
   if (bouwjaar >= 2020) fYear = 1.08;
   else if (bouwjaar >= 2010) fYear = 1.05;
@@ -922,12 +623,14 @@ function calculateValueDetailed({
   else fYear = 0.92;
 
   currentM2 *= fYear;
+
   breakdown.push({
     stap: `Bouwjaar (${bouwjaar})`,
     factor: fYear,
     waarde: Math.round(currentM2)
   });
 
+  /* ---------- 5. ENERGIELABEL ---------- */
   const labelMap = {
     "A+++": 1.06, "A++": 1.05, "A+": 1.04, "A": 1.03,
     "B": 1.00, "C": 0.97, "D": 0.93, "E": 0.90, "F": 0.86, "G": 0.82
@@ -935,21 +638,19 @@ function calculateValueDetailed({
 
   let fLabel = labelMap[label] || 0.96;
 
-  // Dubbeltelling voorkomen bij recente bouwjaren
   if (bouwjaar >= 2010 && ["A", "A+", "A++", "A+++"].includes(label)) {
     fLabel = 1.005;
   }
 
   currentM2 *= fLabel;
+
   breakdown.push({
     stap: `Energielabel (${label})`,
     factor: fLabel,
     waarde: Math.round(currentM2)
   });
 
-  /* ------------------------------------------
-     4. ONDERHOUD (asymmetrisch)
-  ------------------------------------------ */
+  /* ---------- 6. ONDERHOUD ---------- */
   const maintMap = {
     "slecht": 0.82,
     "matig": 0.92,
@@ -968,13 +669,11 @@ function calculateValueDetailed({
     waarde: Math.round(currentM2)
   });
 
-  /* ------------------------------------------
-     5. KAMERS – efficiëntie-indicator
-  ------------------------------------------ */
+  /* ---------- 7. INDELING ---------- */
   let fRooms = 1;
-  if (rooms / size > 0.08) fRooms = 0.98;           // Te veel hokjes
-  else if (rooms >= 4) fRooms = 1.02;               // Gezinswoning
-  else if (rooms <= 2 && size > 80) fRooms = 0.97;  // Inefficiënt
+  if (rooms / size > 0.08) fRooms = 0.98;
+  else if (rooms >= 4) fRooms = 1.02;
+  else if (rooms <= 2 && size > 80) fRooms = 0.97;
 
   currentM2 *= fRooms;
 
@@ -986,14 +685,10 @@ function calculateValueDetailed({
     });
   }
 
-  /* ------------------------------------------
-     6. TUSSENSTAND — kale stenenprijs
-  ------------------------------------------ */
+  /* ---------- 8. TUSSENWAARDE ---------- */
   let estimatedPrice = currentM2 * size;
 
-  /* ------------------------------------------
-     7. BUITENRUIMTE – lump sum (met cap)
-  ------------------------------------------ */
+  /* ---------- 9. BUITENRUIMTE ---------- */
   const outdoorFactors = {
     "geen": 0,
     "balkon": 0.03,
@@ -1009,7 +704,8 @@ function calculateValueDetailed({
   if (outdoorValue > maxOutdoorValue) outdoorValue = maxOutdoorValue;
 
   estimatedPrice += outdoorValue;
-  let m2WithOutdoor = estimatedPrice / size;
+
+  const m2WithOutdoor = estimatedPrice / size;
 
   if (outdoorValue > 0) {
     breakdown.push({
@@ -1021,9 +717,7 @@ function calculateValueDetailed({
 
   currentM2 = m2WithOutdoor;
 
-  /* ------------------------------------------
-     8. ERFPACHT & VvE – harde correcties
-  ------------------------------------------ */
+  /* ---------- 10. FINANCIËLE FACTOREN ---------- */
   let fFinancial = 1;
 
   if (erfpacht === "erfpacht_canon") fFinancial *= 0.90;
@@ -1041,13 +735,11 @@ function calculateValueDetailed({
     });
   }
 
-  /* ------------------------------------------
-     9. ONZEKERHEIDSBAND
-  ------------------------------------------ */
+  /* ---------- 11. ONZEKERHEID ---------- */
   const finalPrice = Math.round(estimatedPrice);
   const finalM2 = Math.round(finalPrice / size);
 
-  let uncertainty = 0.05; // basis 5%
+  let uncertainty = 0.05;
   if (bouwjaar < 1920) uncertainty += 0.025;
   if (size > 180) uncertainty += 0.03;
   if (onderhoud === "slecht") uncertainty += 0.04;
@@ -1065,11 +757,13 @@ function calculateValueDetailed({
   };
 }
 
-/* ---------------------------------------------
-   14. BUTTON → BEREKENING + UI UPDATE
---------------------------------------------- */
+
+/* =========================================================================
+   8. BUTTON → UI OPBOUW VOOR TAXATIE RESULTAAT
+   ========================================================================= */
+
 document.getElementById("btn-calc").onclick = () => {
-  // Inputs ophalen
+
   const s  = Number(document.getElementById("input-size").value);
   const r  = Number(document.getElementById("input-rooms").value);
   const l  = document.getElementById("input-label").value;
@@ -1078,41 +772,32 @@ document.getElementById("btn-calc").onclick = () => {
   const erfpacht      = document.getElementById("input-lease").value;
   const servicekosten = Number(document.getElementById("input-service").value || 0);
   const buitenruimte  = document.getElementById("input-outdoor").value;
-
-  const typeElem  = document.getElementById("input-type");
-  const woningType = typeElem ? typeElem.value : "tussenwoning";
+  const woningType    = document.getElementById("input-type").value;
 
   if (!s) {
     alert("Voer minimaal woonoppervlakte in!");
     return;
   }
 
-  // Waardering berekenen
   const result = calculateValueDetailed({
-    size: s,
-    rooms: r,
-    label: l,
-    bouwjaar,
-    onderhoud,
-    erfpacht,
-    servicekosten,
-    buitenruimte,
+    size: s, rooms: r, label: l,
+    bouwjaar, onderhoud, erfpacht,
+    servicekosten, buitenruimte,
     woningType
   });
 
-  // Scatter chart updaten met jouw woning
-  if (typeof buildScatter === "function") {
-    buildScatter({ x: s, y: result.price, address: "Jouw woning" });
-  }
+  // Scatter highlight
+  buildScatter({ x: s, y: result.price, address: "Jouw woning" });
 
-  // Totale factor vs buurt-gemiddelde
+  // Totale afwijking
   const totaleFactor   = avgM2 ? (result.m2 / avgM2) : 1;
   const totaleFactorPct = ((totaleFactor - 1) * 100).toFixed(1);
   const deltaSign      = totaleFactorPct >= 0 ? "+" : "";
 
-  // Uitleg HTML
-  const uitlegHtml = `
+  // HTML Resultaat
+  document.getElementById("user-output").innerHTML = `
     <div class="bg-white border rounded p-4 space-y-4 shadow-sm">
+
       <h3 class="font-semibold text-lg mb-1 flex items-center gap-2">
         <span>🏡</span> Realistische Marktwaarde Indicatie
       </h3>
@@ -1120,40 +805,37 @@ document.getElementById("btn-calc").onclick = () => {
       <div class="bg-blue-50 border border-blue-100 rounded p-3 text-sm text-blue-900">
         <p>
           Op basis van een <strong>${woningType}</strong> van ${s} m² in deze buurt.
-          We hebben de gemiddelde m²-prijs gecorrigeerd voor grootte, bouwjaar, label,
+          Correcties toegepast op grootte, bouwjaar, label,
           onderhoud, indeling, buitenruimte en financiële lasten.
         </p>
       </div>
 
+      <!-- Breakdown -->
       <div>
         <h4 class="font-semibold mb-2 text-xs uppercase tracking-wide text-gray-500">1. Waardebepaling per factor</h4>
         <div class="overflow-x-auto rounded border border-gray-200">
           <table class="min-w-full text-sm">
             <thead class="bg-gray-50 text-gray-600">
               <tr>
-                <th class="px-3 py-2 text-left font-medium">Factor</th>
-                <th class="px-3 py-2 text-right font-medium">Impact</th>
-                <th class="px-3 py-2 text-right font-medium">Tussenstand (€/m²)</th>
+                <th class="px-3 py-2 text-left">Factor</th>
+                <th class="px-3 py-2 text-right">Impact</th>
+                <th class="px-3 py-2 text-right">€/m²</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-              ${result.breakdown.map((step, index) => {
-                const prev = index === 0 ? avgM2 : result.breakdown[index - 1].waarde;
+              ${result.breakdown.map((step, idx) => {
+                const prev = idx === 0 ? avgM2 : result.breakdown[idx - 1].waarde;
                 const rawDelta = prev ? ((step.waarde - prev) / prev) * 100 : 0;
-                const deltaStr = rawDelta.toFixed(1) + "%";
                 const color =
                   rawDelta > 0 ? "text-emerald-600"
-                  : rawDelta < 0 ? "text-red-600"
-                  : "text-gray-400";
-                const plus = rawDelta > 0 ? "+" : "";
+                : rawDelta < 0 ? "text-red-600"
+                : "text-gray-400";
 
                 return `
-                  <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-3 py-2 text-gray-700">${step.stap}</td>
-                    <td class="px-3 py-2 text-right font-medium ${color}">
-                      ${index === 0 ? "-" : plus + deltaStr}
-                    </td>
-                    <td class="px-3 py-2 text-right text-gray-900">€${step.waarde.toLocaleString()}</td>
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-3 py-2">${step.stap}</td>
+                    <td class="px-3 py-2 text-right font-medium ${color}">${rawDelta.toFixed(1)}%</td>
+                    <td class="px-3 py-2 text-right">€${step.waarde.toLocaleString()}</td>
                   </tr>
                 `;
               }).join("")}
@@ -1162,22 +844,16 @@ document.getElementById("btn-calc").onclick = () => {
         </div>
       </div>
 
+      <!-- Som -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
         <div class="p-3 bg-gray-50 rounded border border-gray-200">
-          <h4 class="font-semibold mb-2 text-xs uppercase tracking-wide text-gray-500">2. De Som</h4>
+          <h4 class="font-semibold text-xs uppercase text-gray-500 mb-2">2. De Som</h4>
           <div class="text-sm space-y-1 font-mono text-gray-700">
-            <div class="flex justify-between">
-              <span>Oppervlakte:</span>
-              <span>${s} m²</span>
-            </div>
-            <div class="flex justify-between">
-              <span>Gecorrigeerde m²-prijs:</span>
-              <span>€${result.m2.toLocaleString()} /m²</span>
-            </div>
-            <div class="border-t border-gray-300 my-1"></div>
+            <div class="flex justify-between"><span>Oppervlakte:</span><span>${s} m²</span></div>
+            <div class="flex justify-between"><span>Gecorrigeerde m²-prijs:</span><span>€${result.m2.toLocaleString()}/m²</span></div>
+            <div class="border-t my-1"></div>
             <div class="flex justify-between font-bold text-gray-900 text-base">
-              <span>Taxatiewaarde:</span>
-              <span>€${result.price.toLocaleString()}</span>
+              <span>Taxatiewaarde:</span><span>€${result.price.toLocaleString()}</span>
             </div>
           </div>
           <p class="text-xs text-gray-500 mt-2">
@@ -1185,36 +861,26 @@ document.getElementById("btn-calc").onclick = () => {
           </p>
         </div>
 
-        <div class="p-3 bg-indigo-50 rounded border border-indigo-100 flex flex-col justify-center">
-          <h4 class="font-semibold mb-1 text-xs uppercase tracking-wide text-indigo-800">3. Betrouwbaarheid</h4>
+        <div class="p-3 bg-indigo-50 rounded border border-indigo-100">
+          <h4 class="font-semibold text-xs uppercase text-indigo-800 mb-2">3. Betrouwbaarheid</h4>
           <p class="text-sm text-indigo-900 mb-2">
-            Gezien de specificaties hanteren we een marge van <strong>±${result.uncertaintyPct}%</strong>.
+            Geschatte meetonnauwkeurigheid: <strong>±${result.uncertaintyPct}%</strong>.
           </p>
-          <div class="text-center bg-white rounded py-2 px-3 border border-indigo-100 shadow-sm">
-            <span class="block text-xs text-gray-500">Geschatte bandbreedte</span>
+          <div class="text-center bg-white rounded py-2 px-3 border shadow-sm">
+            <span class="block text-xs text-gray-500">Bandbreedte</span>
             <span class="font-bold text-indigo-700 text-lg">
               €${result.low.toLocaleString()} – €${result.high.toLocaleString()}
             </span>
           </div>
         </div>
       </div>
-
-      <p class="text-xs text-gray-400 mt-2 italic text-center">
-        * Dit model is indicatief en gebruikt marktlogica (grootte, bouwjaar, label,
-        onderhoud, buitenruimte, erfpacht en VvE). Voor een bindende taxatie blijft een
-        fysieke opname door een makelaar of taxateur nodig.
-      </p>
     </div>
   `;
 
-  document.getElementById("user-output").innerHTML = uitlegHtml;
+  // Radar chart bijwerken
+  renderRadarChart(result.breakdown);
 
-  // Radar chart updaten (functie komt uit deel 1)
-  if (typeof renderRadarChart === "function") {
-    renderRadarChart(result.breakdown);
-  }
-
-  // Eventuele sidebar-samenvatting
+  // Sidebar update (optioneel)
   const sideVal = document.getElementById("ai-valuation");
   if (sideVal) {
     sideVal.innerHTML = `
@@ -1227,29 +893,234 @@ document.getElementById("btn-calc").onclick = () => {
   }
 };
 
-/* ---------------------------------------------
-   15. ADVANCED SECTION TOGGLE
---------------------------------------------- */
-const toggleAdvBtn = document.getElementById("toggle-adv");
-if (toggleAdvBtn) {
-  toggleAdvBtn.onclick = () => {
-    const box  = document.getElementById("adv-fields");
-    const icon = document.getElementById("adv-icon");
+/* =========================================================================
+   9. REBUILD ALL – na Funda scrape of handmatige refresh
+   ========================================================================= */
 
-    if (!box) return;
+function rebuildAllChartsAndTables() {
+  console.log("🔄 UI volledig opnieuw opbouwen…");
 
-    const isHidden = box.classList.contains("hidden");
+  if (!properties || !properties.length) {
+    console.warn("⚠️ Geen properties om te verwerken");
+    return;
+  }
 
-    if (isHidden) {
-      box.classList.remove("hidden");
-      if (icon) icon.textContent = "▲";
-    } else {
-      box.classList.add("hidden");
-      if (icon) icon.textContent = "▼";
-    }
+  /* ---------------------------------------------
+     1. M2-prijzen opnieuw berekenen
+  --------------------------------------------- */
+  const propsWithM2 = properties
+    .filter(p => p.size > 0)
+    .map(p => ({
+      ...p,
+      pricePerM2: Math.round(p.price / p.size)
+    }));
+
+  const avg = arr =>
+    arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : 0;
+
+  window.avgM2    = avg(propsWithM2.map(p => p.pricePerM2));
+  window.avgPrice = avg(propsWithM2.map(p => p.price));
+  window.avgSize  = avg(propsWithM2.map(p => p.size));
+  window.minM2    = Math.min(...propsWithM2.map(p => p.pricePerM2));
+  window.maxM2    = Math.max(...propsWithM2.map(p => p.pricePerM2));
+
+  /* ---------------------------------------------
+     2. KPI kaarten opnieuw tekenen
+  --------------------------------------------- */
+  document.getElementById("kpis").innerHTML = `
+    <div class="bg-white p-6 shadow rounded">
+      <p class="text-sm text-gray-600">Gemiddelde prijs/m²</p>
+      <p class="text-2xl font-bold text-blue-600">€${avgM2.toLocaleString()}</p>
+    </div>
+    <div class="bg-white p-6 shadow rounded">
+      <p class="text-sm text-gray-600">Gemiddelde prijs</p>
+      <p class="text-2xl font-bold text-green-600">€${avgPrice.toLocaleString()}</p>
+    </div>
+    <div class="bg-white p-6 shadow rounded">
+      <p class="text-sm text-gray-600">Gem. oppervlakte</p>
+      <p class="text-2xl font-bold text-purple-600">${avgSize} m²</p>
+    </div>
+  `;
+
+  /* ---------------------------------------------
+     3. Details tabel opnieuw vullen
+  --------------------------------------------- */
+  const tb = document.getElementById("table-body");
+  tb.innerHTML = "";
+
+  propsWithM2
+    .slice() 
+    .sort((a, b) => b.pricePerM2 - a.pricePerM2)
+    .forEach(p => {
+      tb.innerHTML += `
+        <tr class="border-b">
+          <td class="px-4 py-2">${p.address}</td>
+          <td class="px-4 py-2">€${p.price.toLocaleString()}</td>
+          <td class="px-4 py-2">${p.size}</td>
+          <td class="px-4 py-2 font-bold text-blue-600">€${p.pricePerM2.toLocaleString()}</td>
+          <td class="px-4 py-2">${p.status}</td>
+        </tr>
+      `;
+    });
+
+  /* ---------------------------------------------
+     4. Insights opnieuw opbouwen
+  --------------------------------------------- */
+  const insights = document.getElementById("insights");
+  insights.innerHTML = "";
+
+  const soldCount = properties.filter(p => p.status === "Verkocht").length;
+  const soldPct   = Math.round((soldCount / properties.length) * 100);
+
+  const AplusCount = properties.filter(p => p.label && p.label.startsWith("A")).length;
+  const AplusPct   = Math.round((AplusCount / properties.length) * 100);
+
+  const addInsight = txt => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="text-blue-500 mr-2">•</span>${txt}`;
+    insights.appendChild(li);
   };
+
+  addInsight(`Gemiddelde prijs per m²: <strong>€${avgM2.toLocaleString()}</strong>.`);
+  addInsight(`${soldPct}% verkocht (${soldCount}/${properties.length}).`);
+  addInsight(`m² prijs range: €${minM2.toLocaleString()} – €${maxM2.toLocaleString()}.`);
+  addInsight(`Energielabel A of hoger: ${AplusPct}%.`);
+
+  /* ---------------------------------------------
+     5. Oude grafieken vernietigen
+  --------------------------------------------- */
+  try { chartScatter?.destroy(); } catch(e) {}
+  try { chartM2Ranges?.destroy(); } catch(e) {}
+  try { chartHeatmap?.destroy(); } catch(e) {}
+  try { chartLabels?.destroy(); } catch(e) {}
+  try { chartTrend?.destroy(); } catch(e) {}
+
+  /* ---------------------------------------------
+     6. Scatter chart opnieuw tekenen
+  --------------------------------------------- */
+  buildScatter();
+
+  /* ---------------------------------------------
+     7. M² Range grafiek
+  --------------------------------------------- */
+  const ranges = [
+    { label: "3000–4000", min: 3000, max: 4000, count: 0 },
+    { label: "4000–5000", min: 4000, max: 5000, count: 0 },
+    { label: "5000–6000", min: 5000, max: 6000, count: 0 },
+    { label: "6000–7000", min: 6000, max: 7000, count: 0 },
+    { label: "7000+",     min: 7000, max: 50000, count: 0 }
+  ];
+
+  propsWithM2.forEach(p => {
+    const r = ranges.find(x => p.pricePerM2 >= x.min && p.pricePerM2 < x.max);
+    if (r) r.count++;
+  });
+
+  chartM2Ranges = new Chart(document.getElementById("chart-m2ranges"), {
+    type: "bar",
+    data: {
+      labels: ranges.map(r => r.label),
+      datasets: [{
+        data: ranges.map(r => r.count),
+        backgroundColor: "#3b82f6"
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false }},
+      scales: { y: { beginAtZero: true }}
+    }
+  });
+
+  /* ---------------------------------------------
+     8. Heatmap – prijs per m² vs aantal kamers
+  --------------------------------------------- */
+  const heat = {};
+  propsWithM2.forEach(p => {
+    if (!heat[p.rooms]) heat[p.rooms] = [];
+    heat[p.rooms].push(p.pricePerM2);
+  });
+
+  const heatLabels = Object.keys(heat).sort((a, b) => a - b);
+  const heatValues = heatLabels.map(k => avg(heat[k]));
+
+  chartHeatmap = new Chart(document.getElementById("chart-heatmap"), {
+    type: "bar",
+    data: {
+      labels: heatLabels.map(k => `${k} kamers`),
+      datasets: [{
+        data: heatValues,
+        backgroundColor: heatValues.map(v => {
+          const r = (v - minM2) / (maxM2 - minM2 || 1);
+          return `rgb(${Math.round(255 * r)}, ${Math.round(255 * (1 - r))}, 80)`;
+        })
+      }]
+    },
+    options: { plugins: { legend: { display: false }}}
+  });
+
+  /* ---------------------------------------------
+     9. Energielabel grafiek
+  --------------------------------------------- */
+  const groups = {};
+
+  propsWithM2.forEach(p => {
+    if (!p.label || p.label === "?") return;
+    if (!groups[p.label]) groups[p.label] = [];
+    groups[p.label].push(p.pricePerM2);
+  });
+
+  const labelNames = Object.keys(groups).sort();
+  const labelAverages = labelNames.map(l => avg(groups[l]));
+
+  chartLabels = new Chart(document.getElementById("chart-labels"), {
+    type: "bar",
+    data: {
+      labels: labelNames,
+      datasets: [{
+        data: labelAverages,
+        backgroundColor: "#10b981"
+      }]
+    },
+    options: { plugins: { legend: { display: false }}}
+  });
+
+  /* ---------------------------------------------
+     10. Trend grafiek
+  --------------------------------------------- */
+  const months = ["Jan","Feb","Mrt","Apr","Mei","Jun","Jul","Aug","Sep"];
+
+  const trend = months.map(() =>
+    avgPrice * (0.95 + Math.random() * 0.1)
+  );
+
+  chartTrend = new Chart(document.getElementById("chart-trend"), {
+    type: "line",
+    data: {
+      labels: months,
+      datasets: [{
+        data: trend,
+        borderColor: "#3b82f6",
+        tension: 0.4
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false }},
+      scales: {
+        y: {
+          ticks: {
+            callback: value => "€" + (value / 1000).toFixed(0) + "k"
+          }
+        }
+      }
+    }
+  });
+
+  console.log("✅ UI volledig opnieuw opgebouwd!");
 }
 </script>
+
+
+    
 
 </body>
 </html>
