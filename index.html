@@ -328,55 +328,66 @@
        1. FUNDA SCRAPER – API AANROEP (Render.com)
        ========================================================================= */
     
-    async function fetchFundaData() {
-      const urlInput = document.getElementById("funda-url");
-      const loader   = document.getElementById("scrape-loader");
-      const statusEl = document.getElementById("scrape-status");
-    
-      const fundaUrl = urlInput.value.trim();
-      if (!fundaUrl) {
-        alert("Voer een geldige Funda URL in.");
-        return;
-      }
-    
-      loader.classList.remove("hidden");
-      statusEl.innerHTML = "";
-    
-      try {
-        const apiUrl = "https://disguisedly-superparamount-joey.ngrok-free.dev/scrape?url=" + encodeURIComponent(fundaUrl);
-        const res = await fetch(apiUrl);
-    
-        if (!res.ok) throw new Error("API error: " + res.status);
-    
-        const data = await res.json();
-        loader.classList.add("hidden");
-    
-        if (!Array.isArray(data) || data.length === 0) {
-          statusEl.innerHTML = "❌ Geen resultaten gevonden.";
-          return;
-        }
-    
-        statusEl.innerHTML = `✅ ${data.length} woningen geladen`;
-    
-        // Globale properties vullen met nette waarden
-        window.properties = data.map(p => ({
-          address:  p.address || "Onbekend",
-          price:    Number(String(p.price || "0").replace(/\D+/g, "")) || 0,
-          size:     Number(p.m2 || 0),
-          rooms:    Number(p.bedrooms || 0),
-          label:    p.energy_label || "?",
-          status:   "Actief"
-        }));
-    
-        // UI opnieuw opbouwen
-        rebuildAllChartsAndTables();
-    
-      } catch (err) {
-        loader.classList.add("hidden");
-        statusEl.innerHTML = "❌ Fout bij laden: " + err.message;
-      }
+       async function fetchFundaData() {
+  const urlInput = document.getElementById("funda-url");
+  const loader   = document.getElementById("scrape-loader");
+  const statusEl = document.getElementById("scrape-status");
+
+  let fundaUrl = urlInput.value.trim();
+  if (!fundaUrl) {
+    alert("Voer een geldige Funda URL in.");
+    return;
+  }
+
+  // ⭐ FIX 1 — automatisch https toevoegen als het mist
+  if (!fundaUrl.startsWith("http")) {
+    fundaUrl = "https://" + fundaUrl;
+  }
+
+  loader.classList.remove("hidden");
+  statusEl.innerHTML = "";
+
+  try {
+    // ⭐ FIX 2 — GEEN encodeURIComponent + CORS werkt
+    const apiUrl =
+      "https://disguisedly-superparamount-joey.ngrok-free.dev/scrape?url=" + fundaUrl;
+
+    const res = await fetch(apiUrl);
+
+    // ⭐ Check of API wel JSON teruggeeft
+    const text = await res.text();
+    if (text.trim().startsWith("<")) {
+      throw new Error("Server gaf HTML terug i.p.v. JSON");
     }
-    
+
+    const data = JSON.parse(text);
+
+    loader.classList.add("hidden");
+
+    if (!Array.isArray(data) || data.length === 0) {
+      statusEl.innerHTML = "❌ Geen resultaten gevonden.";
+      return;
+    }
+
+    statusEl.innerHTML = `✅ ${data.length} woningen geladen`;
+
+    window.properties = data.map(p => ({
+      address:  p.address || "Onbekend",
+      price:    Number(String(p.price || "0").replace(/\D+/g, "")) || 0,
+      size:     Number(p.m2 || 0),
+      rooms:    Number(p.bedrooms || 0),
+      label:    p.energy_label || "?",
+      status:   "Actief"
+    }));
+
+    rebuildAllChartsAndTables();
+
+  } catch (err) {
+    loader.classList.add("hidden");
+    statusEl.innerHTML = "❌ Fout bij laden: " + err.message;
+  }
+}
+
     document.getElementById("btn-scrape").onclick = fetchFundaData;
     
     
